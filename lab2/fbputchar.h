@@ -10,7 +10,7 @@
 extern int fbopen(void);
 extern void fbputchar(char, int, int);
 extern void fbputs(const char *, int, int);
-extern void scrolldown(int row_h, int row_t, int col_h, int col_t);
+extern void scrolldown(int row_h, int row_t);
 extern void fbclear(int row_h, int row_t, int col_h, int col_t);
 extern void fbclearall();
 

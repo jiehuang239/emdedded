@@ -41,13 +41,14 @@ uint8_t endpoint_address;
 
 pthread_t network_thread;
 void *network_thread_f(void *);
-
+/*
 char interpretKey(usb_keyboard_packet packet)
 {
   
   return '0';
 }
 
+*/
 int main()
 {
   int err, col;
@@ -63,16 +64,19 @@ int main()
     exit(1);
   }
 
+  fbclearall();
+
   /* Draw rows of asterisks across the top and bottom of the screen */
   for (col = 0 ; col < 64 ; col++) {
     fbputchar('*', 0, col);
     fbputchar('*', 23, col);
   }
 
-  fbputchar(CURSOR, 11, 2);
-
+  fbputchar('*', 5, 5);
+  fbputchar('*', 4, 5);
   fbputs("Hello CSEE 4840 World!", 4, 10);
-
+  scrolldown(3, 4);
+  
   /* Open the keyboard */
   if ( (keyboard = openkeyboard(&endpoint_address)) == NULL ) {
     fprintf(stderr, "Did not find a keyboard\n");
@@ -119,10 +123,9 @@ int main()
     }
   }
 
-  /*Loop outside is for chatting and break when the client is terminated*/
+/*
   for (;;) {
-    bool exit = 0;
-    /*Loop inside is for capturing input from keyboard and break when enter is hit*/
+    int exit = 0;
     for (;;) {
       libusb_interrupt_transfer(keyboard, endpoint_address,
             (unsigned char *) &packet, sizeof(packet),
@@ -130,22 +133,22 @@ int main()
       if (transferred == sizeof(packet)) {
 
 
-        if (packet.ketcode[0] == 0x111) { /* DELETE pressed? */
+        if (packet.keycode[0] == 0x111) { 
 
-        } else if (packet.ketcode[0] == 0x111) { /* ENTER pressed? */
+        } else if (packet.keycode[0] == 0x111) { 
 
-        } else if (packet.keycode[0] == 0x29) { /* ESC pressed? */
+        } else if (packet.keycode[0] == 0x29) { 
           exit = 1;
           break;
-        } else { /* Other cases like LITERAL*/
+        } else { 
 
         }
     }
     if (exit)
       break;
-    /*Handle sent out message here*/
   }
 
+*/
   /* Terminate the network thread */
   pthread_cancel(network_thread);
 

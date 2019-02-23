@@ -112,31 +112,36 @@ void fbputs(const char *s, int row, int col)
 
 void fbclearall()
 {		
-	unsigned char *pixel = frambuffer;		
+	unsigned char *pixel = framebuffer;		
  	for (int i = 0; i < fb_finfo.smem_len; i++) {		
- 		pixel[0] = 255;//black		
+ 		pixel[0] = 0;//black		
  		pixel++;		
  	}		
 }
 
-void scrolldown(int row_h, int row_t, int col_h, int col_t)
+void scrolldown(int row_h, int row_t)
 {
   unsigned char *start = framebuffer +
     (row_h * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
-    (col_h * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
+    (0 * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
   unsigned char *curr, *prev, *end;
-  for (int i = row_h + 1; i <= row_t; i++) {
-    end = start + fb_finfo.line_length * FONT_HEIGHT * 2;
-    curr = start;
-    prev = start - fb_finfo.line_length * FONT_HEIGHT * 2;
-    while (curr != end) {
-      *curr = *prev;
-      curr++;
-      prev++;
-    }
-    start = end;
+  end = framebuffer +
+    ((row_t + 1) * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
+    (0 * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
+  prev = start;
+  curr = prev + FONT_HEIGHT * 2 * fb_finfo.line_length;
+
+  while (curr < end && curr != end) {
+    *prev = *curr;
+    prev++;
+    curr++;
+  }
+  while (prev != curr) {
+  *prev = 0;
+  prev++;
   }
 }
+
 
 void fbclear(int row_h, int row_t, int col_h, int col_t)
 {
