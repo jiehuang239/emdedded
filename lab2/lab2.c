@@ -34,6 +34,25 @@
  * 
  */
 
+/* keyboard numnber --> ASCII
+ * 1 - 9, 0, ENTER, ESC, BACKSPACE, TAB, SPACE,
+ * -, +, [, ], \, NOT_FOUND, ;, ', `, ,, ., /
+ */
+static unsigned char keyboard_table[] = {
+  0x31, 0x32, 0x32, 0x33, 0x34, 0x35, 0x35, 0x36, 0x37, 0x30, 0x00, 0x00, 0x00, 0x09, 0x20,
+  0x2d, 0x3d, 0x5b, 0x5d, 0x5c, 0x00, 0x3b, 0x27, 0x60, 0x2c, 0x2e, 0x2f
+}
+
+/* shift_keyboard numnber --> ASCII
+ * 1 - 9, 0, ENTER, ESC, BACKSPACE, TAB, SPACE,
+ * -, +, [, ], \, NOT_FOUND, ;, ', `, ,, ., /
+ */
+static unsigned char shift_keyboard_table[] = {
+  0x21, 0x40, 0x23, 0x24, 0x25, 0x5e, 0x26, 0x2a, 0x28, 0x29, 0x00, 0x00, 0x00, 0x09, 0x20,
+  0x5f, 0x2b, 0x7b, 0x7d, 0x7c, 0x00, 0x3a, 0x22, 0x7e, 0x3c, 0x3e, 0x3f
+}
+
+
 int sockfd; /* Socket file descriptor */
 
 struct libusb_device_handle *keyboard;
@@ -50,17 +69,17 @@ char interpret_key(struct usb_keyboard_packet packet)
 
   if (shift) {
     if (packet.keycode[0] >= 0x04 && packet.keycode[0] <= 0x1d)
-      return char(packet.keycode[0] + 61);
+      return (char)(packet.keycode[0] + 61);
     else if (packet.keycode[0] >= 0x1e && packet.keycode[0] <= 0x27)
-      return char(shift_keyboard_table[packet.keycode[0] - 0x1e];
+      return (char)(shift_keyboard_table[packet.keycode[0] - 0x1e]);
 
   } else {
     if (packet.keycode[0] >= 0x04 && packet.keycode[0] <= 0x1d)
-      return char(packet.keycode[0] + 93);
+      return (char)(packet.keycode[0] + 93);
     else if (packet.keycode[0] >= 0x1e && packet.keycode[0] <= 0x27)
-      return char(keyboard_table[packet.keycode[0] - 0x1e];
+      return (char)(keyboard_table[packet.keycode[0] - 0x1e]);
   }
-  return '';
+  return '.';
 }
 
 
@@ -192,23 +211,5 @@ void *network_thread_f(void *ignored)
   }
 
   return NULL;
-}
-
-/* keyboard numnber --> ASCII
- * 1 - 9, 0, ENTER, ESC, BACKSPACE, TAB, SPACE,
- * -, +, [, ], \, NOT_FOUND, ;, ', `, ,, ., /
- */
-static unsigned char keyboard_table[] = {
-  0x31, 0x32, 0x32, 0x33, 0x34, 0x35, 0x35, 0x36, 0x37, 0x30, 0x00, 0x00, 0x00, 0x09, 0x20,
-  0x2d, 0x3d, 0x5b, 0x5d, 0x5c, 0x00, 0x3b, 0x27, 0x60, 0x2c, 0x2e, 0x2f
-}
-
-/* shift_keyboard numnber --> ASCII
- * 1 - 9, 0, ENTER, ESC, BACKSPACE, TAB, SPACE,
- * -, +, [, ], \, NOT_FOUND, ;, ', `, ,, ., /
- */
-static unsigned char shift_keyboard_table[] = {
-  0x21, 0x40, 0x23, 0x24, 0x25, 0x5e, 0x26, 0x2a, 0x28, 0x29, 0x00, 0x00, 0x00, 0x09, 0x20,
-  0x5f, 0x2b, 0x7b, 0x7d, 0x7c, 0x00, 0x3a, 0x22, 0x7e, 0x3c, 0x3e, 0x3f
 }
 
