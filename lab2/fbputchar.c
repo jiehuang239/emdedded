@@ -110,6 +110,14 @@ void fbputs(const char *s, int row, int col)
   while ((c = *s++) != 0) fbputchar(c, row, col++);
 }
 
+void fbclearall()
+{		
+	unsigned char *pixel = frambuffer;		
+ 	for (int i = 0; i < fb_finfo.smem_len; i++) {		
+ 		pixel[0] = 255;//black		
+ 		pixel++;		
+ 	}		
+}
 
 void scrolldown(int row_h, int row_t, int col_h, int col_t)
 {
