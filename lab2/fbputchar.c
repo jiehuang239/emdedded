@@ -23,6 +23,7 @@
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 16
 #define BITS_PER_PIXEL 32
+#define COL_MAX 
 
 struct fb_var_screeninfo fb_vinfo;
 struct fb_fix_screeninfo fb_finfo;
@@ -107,7 +108,11 @@ void fbputchar(char c, int row, int col)
 void fbputs(const char *s, int row, int col)
 {
   char c;
-  while ((c = *s++) != 0) fbputchar(c, row, col++);
+  while ((c = *s++) != 0){
+ if(col==64)col=0;
+ fbputchar(c, row, col++);
+ 
+}
 }
 
 void fbclearall()

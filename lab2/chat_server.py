@@ -49,7 +49,7 @@ if __name__ == "__main__":
 		CONNECTION_LIST.append(sockfd)
 		print "## New Connection %s:%s" % (clientip, clientport)
 		
-		sockfd.send("Welcome to the CSEE 4840 Lab2 chat server") 
+		sockfd.send("Welcome to the CSEE 4840 Lab2 chat server i really really like you I have a crush on you! cause you are gorgeous!") 
 		broadcast_data(sockfd, "## %s has joined\n" % clientip)
 
 	    # A packet from a client
