@@ -51,7 +51,7 @@ char interpretKey(usb_keyboard_packet packet)
 */
 int main()
 {
-  int err, col;
+  int err;
 
   struct sockaddr_in serv_addr;
 

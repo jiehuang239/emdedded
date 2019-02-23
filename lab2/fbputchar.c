@@ -172,7 +172,7 @@ unsigned char *start = framebuffer +
 unsigned char *end = start+FONT_HEIGHT/8*fb_finfo.line_length;
 unsigned char*curr=start;
 while(curr!=end){
-  *curr=0;
+  *curr=255;
    curr++;
 }
 
