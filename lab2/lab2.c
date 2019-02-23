@@ -19,12 +19,25 @@
  */
 /* micro36.ee.columbia.edu */
 #define SERVER_HOST "128.59.148.182"
+//#define SERVER_HOST "128.59.64.154"
 #define SERVER_PORT 42000
 
 #define BUFFER_SIZE 128
 
 #define UNDERLINE   95
 #define SPACE       32
+
+typedef struct {
+  int rev_row;
+  int sen_row;
+  int sen_limit;
+} screen_info;
+
+screen_info info = {
+  .rev_row = 2,
+  .sen_row = 12,
+  .sen_limit = 20
+};
 
 int count = 0;
 /*
@@ -37,20 +50,20 @@ int count = 0;
 
 /* keyboard numnber --> ASCII
  * 1 - 9, 0, ENTER, ESC, BACKSPACE, TAB, SPACE,
- * -, =, [, ], \, NOT_FOUND, ;, ', `, ,, ., /
+ * -, =, [, ], \, NOT_FOUND, ;, ', `, ,, ., /, CAP
  */
 static char keyboard_table[] = {
-  0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x00, 0x00, 0x00, 0x09, 0x20,
-  0x2d, 0x3d, 0x5b, 0x5d, 0x5c, 0x00, 0x3b, 0x27, 0x60, 0x2c, 0x2e, 0x2f
+  0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x00, 0x00, 0x00, 0x80, 0x20,
+  0x2d, 0x3d, 0x5b, 0x5d, 0x5c, 0x80, 0x3b, 0x27, 0x60, 0x2c, 0x2e, 0x2f, 0x80
 };
 
 /* shift_keyboard numnber --> ASCII
  * ! - ), ENTER, ESC, BACKSPACE, TAB, SPACE,
- * _, +, {, }, |, NOT_FOUND, :, ", ~, <, >, ?
+ * _, +, {, }, |, NOT_FOUND, :, ", ~, <, >, ?, CAP
  */
 static char shift_keyboard_table[] = {
-  0x21, 0x40, 0x23, 0x24, 0x25, 0x5e, 0x26, 0x2a, 0x28, 0x29, 0x00, 0x00, 0x00, 0x09, 0x20,
-  0x5f, 0x2b, 0x7b, 0x7d, 0x7c, 0x00, 0x3a, 0x22, 0x7e, 0x3c, 0x3e, 0x3f
+  0x21, 0x40, 0x23, 0x24, 0x25, 0x5e, 0x26, 0x2a, 0x28, 0x29, 0x00, 0x00, 0x00, 0x80, 0x20,
+  0x5f, 0x2b, 0x7b, 0x7d, 0x7c, 0x80, 0x3a, 0x22, 0x7e, 0x3c, 0x3e, 0x3f, 0x80
 };
 
 
@@ -62,25 +75,25 @@ uint8_t endpoint_address;
 pthread_t network_thread;
 void *network_thread_f(void *);
 
-char interpret_key(struct usb_keyboard_packet packet)
+char interpret_key(struct usb_keyboard_packet packet, int index)
 {
   int shift = 0;
   if (packet.modifiers && 0x22)
     shift = 1;
 
   if (shift) {
-    if (packet.keycode[0] >= 0x04 && packet.keycode[0] <= 0x1d)
-      return (char)(packet.keycode[0] + 61);
-    else
-      return (char)(shift_keyboard_table[packet.keycode[0] - 0x1e]);
+    if (packet.keycode[index] >= 0x04 && packet.keycode[index] <= 0x1d)
+      return (char)(packet.keycode[index] + 61);
+    else if (packet.keycode[index] <= 0x39)
+      return (char)(shift_keyboard_table[packet.keycode[index] - 0x1e]);
 
   } else {
-    if (packet.keycode[0] >= 0x04 && packet.keycode[0] <= 0x1d)
-      return (char)(packet.keycode[0] + 93);
-    else
-      return (char)(keyboard_table[packet.keycode[0] - 0x1e]);
+    if (packet.keycode[index] >= 0x04 && packet.keycode[index] <= 0x1d)
+      return (char)(packet.keycode[index] + 93);
+    else if (packet.keycode[index] <= 0x39)
+      return (char)(keyboard_table[packet.keycode[index] - 0x1e]);
   }
-  return '.';
+  return 0x80;
 }
 
 
@@ -155,16 +168,21 @@ int main()
     int exit = 0;
     count = 0;
     char buffer[BUFFER_SIZE];
-    buffer[BUFFER_SIZE - 1] = '\0';
+    buffer[0] = '\0';
+    char prev = 0x00;
     for (;;) {
       libusb_interrupt_transfer(keyboard, endpoint_address,
             (unsigned char *) &packet, sizeof(packet),
             &transferred, 0);
+      
       if (transferred == sizeof(packet)) {
-	
-	if (packet.keycode[0] == 0x00)
+
+        sprintf(keystate, "%02x %02x %02x", packet.modifiers, packet.keycode[0], packet.keycode[1]);
+        fbputs(keystate, 2, 0);	
+	if (packet.keycode[0] < 0x04) {
+	  prev = 0x00;
 	  continue;
-        else if (packet.keycode[0] == 0x2a) { // delete
+        } else if (packet.keycode[0] == 0x2a) { // delete
           if (count == 0)
             continue;
           else
@@ -174,18 +192,55 @@ int main()
         } else if (packet.keycode[0] == 0x29) { // esc
           exit = 1;
           break;
-        } else {
-          if (count >=  BUFFER_SIZE - 1)
+        } else if (packet.keycode[1] == 0x00) {
+          sprintf(keystate, "%02x %02x %02x", prev, prev, prev);
+          fbputs(keystate, 5, 0);	
+
+
+          if (count >=  BUFFER_SIZE - 1 || packet.keycode[0] == prev)
             continue;
-          char tmp = interpret_key(packet);
+          char tmp = interpret_key(packet, 0);
+          if (tmp >= 0x80)
+	    continue;
           add_word(&count, &buffer[0], tmp);
-        }
+	  prev = packet.keycode[0];
+        } else {
+	  if (count >=  BUFFER_SIZE - 1)
+            continue;
+
+	  sprintf(keystate, "%02x %02x %02x", prev, prev, prev);
+          fbputs(keystate, 3, 0);	
+
+          int index = 0;
+          if (prev == packet.keycode[0])
+	    index = 1;
+          char tmp = interpret_key(packet, index);
+          if (tmp >= 0x80)
+	    continue;
+          add_word(&count, &buffer[0], tmp); 
+          prev = packet.keycode[index];
+	}
 
       }
     }
     if (exit)
       break;
     fbclear(22, 23, 0, 63);
+    int n = write(sockfd, &buffer, BUFFER_SIZE);
+    if (n < 0)
+      printf("Failed\n");
+
+    if (info.sen_limit - info.sen_row < 2) {
+      scrolldown(12, info.sen_limit);
+      scrolldown(12, info.sen_limit);
+      info.sen_row -= 2;
+    }
+    fbputs(buffer, info.sen_row, 0);
+    if (count < 65)
+      info.sen_row++;
+    else
+      info.sen_row += 2;
+
   }
 
 

@@ -109,7 +109,10 @@ void fbputs(const char *s, int row, int col)
 {
   char c;
   while ((c = *s++) != 0){
- if(col==64)col=0;
+ if(col == 64) {
+	col = 0;
+	row++;
+ }
  fbputchar(c, row, col++);
  
 }
@@ -187,7 +190,7 @@ void initScreen(){
 fbputs("received:",1,0);
 fbputs("sent:",11,0);
 drawLine(11,0,63);
-drawLine(22,0,63);
+drawLine(21,0,63);
 
 }
 static unsigned char font[] = {
