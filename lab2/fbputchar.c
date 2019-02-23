@@ -45,25 +45,18 @@ int fbopen()
     return FBOPEN_VSCREENINFO;
 
   if (fb_vinfo.bits_per_pixel != 32) return FBOPEN_BPP; /* Unexpected */
- //call mmap to make it appear in the process's address space
+
   framebuffer = mmap(0, fb_finfo.smem_len, PROT_READ | PROT_WRITE,
 		     MAP_SHARED, fd, 0);
   if (framebuffer == (unsigned char *)-1) return FBOPEN_MMAP;
 
   return 0;
 }
-void clearFB(){
-	unsigned char *pixel=frambuffer;
-	for(int i=0;i<fb_finfo.smem_len;i++){
-		pixel[0]=255;//black
-		pixel++;
-	}
-}
+
 /*
  * Draw the given character at the given row/column.
  * fbopen() must be called first.
  */
- //display a single character on the screen
 void fbputchar(char c, int row, int col)
 {
   int x, y;
@@ -78,24 +71,24 @@ void fbputchar(char c, int row, int col)
     mask = 0x80;
     for (x = 0 ; x < FONT_WIDTH ; x++) {
       if (pixels & mask) {	
-	pixel[0] = 255; /* Red */
+        pixel[0] = 255; /* Red */
         pixel[1] = 255; /* Green */
         pixel[2] = 255; /* Blue */
         pixel[3] = 0;
       } else {
-	pixel[0] = 0;
+        pixel[0] = 0;
         pixel[1] = 0;
         pixel[2] = 0;
         pixel[3] = 0;
       }
       pixel += 4;
       if (pixels & mask) {
-	pixel[0] = 255; /* Red */
+        pixel[0] = 255; /* Red */
         pixel[1] = 255; /* Green */
         pixel[2] = 255; /* Blue */
         pixel[3] = 0;
       } else {
-	pixel[0] = 0;
+        pixel[0] = 0;
         pixel[1] = 0;
         pixel[2] = 0;
         pixel[3] = 0;
@@ -115,6 +108,43 @@ void fbputs(const char *s, int row, int col)
 {
   char c;
   while ((c = *s++) != 0) fbputchar(c, row, col++);
+}
+
+
+void scrolldown(int row_h, int row_t, int col_h, int col_t)
+{
+  unsigned char *start = framebuffer +
+    (row_h * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
+    (col_h * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
+  unsigned char *curr, *prev, *end;
+  for (int i = row_h + 1; i <= row_t; i++) {
+    end = start + fb_finfo.line_length * FONT_HEIGHT * 2;
+    curr = start;
+    prev = start - fb_finfo.line_length * FONT_HEIGHT * 2;
+    while (curr != end) {
+      *curr = *prev;
+      curr++;
+      prev++;
+    }
+    start = end;
+  }
+}
+
+void fbclear(int row_h, int row_t, int col_h, int col_t)
+{
+  unsigned char *start = framebuffer +
+    (row_h * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
+    (col_h * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
+  unsigned char *curr, *end;
+  for (int i = row_h; i <= row_t; i++) {
+    end = start + fb_finfo.line_length * FONT_HEIGHT * 2;
+    curr = start;
+    while (curr != end) {
+      *curr = 0;
+      curr++;
+    }
+    start = end;
+  }
 }
 
 /* 8 X 16 console font from /lib/kbd/consolefonts/lat0-16.psfu.gz

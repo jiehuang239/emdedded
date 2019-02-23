@@ -2,8 +2,7 @@
  *
  * CSEE 4840 Lab 2 for 2019
  *
- * Name/UNI: Jie Huang/jh4000 
- 
+ * Name/UNI: Please Changeto Yourname (pcy2301)
  */
 #include "fbputchar.h"
 #include <stdio.h>
@@ -24,6 +23,9 @@
 
 #define BUFFER_SIZE 128
 
+#define UNDERLINE   95
+#define SPACE       32
+
 /*
  * References:
  *
@@ -39,6 +41,12 @@ uint8_t endpoint_address;
 
 pthread_t network_thread;
 void *network_thread_f(void *);
+
+char interpretKey(usb_keyboard_packet packet)
+{
+  
+  return '0';
+}
 
 int main()
 {
@@ -60,6 +68,8 @@ int main()
     fbputchar('*', 0, col);
     fbputchar('*', 23, col);
   }
+
+  fbputchar(CURSOR, 11, 2);
 
   fbputs("Hello CSEE 4840 World!", 4, 10);
 
@@ -98,7 +108,6 @@ int main()
     libusb_interrupt_transfer(keyboard, endpoint_address,
 			      (unsigned char *) &packet, sizeof(packet),
 			      &transferred, 0);
-	/*returns an eight byte packet consisting of a byte indicating which modifier keys are pressed*/
     if (transferred == sizeof(packet)) {
       sprintf(keystate, "%02x %02x %02x", packet.modifiers, packet.keycode[0],
 	      packet.keycode[1]);
@@ -108,6 +117,33 @@ int main()
 	break;
       }
     }
+  }
+
+  /*Loop outside is for chatting and break when the client is terminated*/
+  for (;;) {
+    bool exit = 0;
+    /*Loop inside is for capturing input from keyboard and break when enter is hit*/
+    for (;;) {
+      libusb_interrupt_transfer(keyboard, endpoint_address,
+            (unsigned char *) &packet, sizeof(packet),
+            &transferred, 0);
+      if (transferred == sizeof(packet)) {
+
+
+        if (packet.ketcode[0] == 0x111) { /* DELETE pressed? */
+
+        } else if (packet.ketcode[0] == 0x111) { /* ENTER pressed? */
+
+        } else if (packet.keycode[0] == 0x29) { /* ESC pressed? */
+          exit = 1;
+          break;
+        } else { /* Other cases like LITERAL*/
+
+        }
+    }
+    if (exit)
+      break;
+    /*Handle sent out message here*/
   }
 
   /* Terminate the network thread */
