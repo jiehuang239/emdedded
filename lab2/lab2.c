@@ -84,6 +84,23 @@ char interpret_key(struct usb_keyboard_packet packet)
 }
 
 
+void delete_word(int* count, char* buffer)
+{
+  (*count)--;
+  buffer[*count] = '\0';
+  // fbputchar(' ', 22 + (*count)/22, (*count)%22);
+  fbputchar('|', 22 + (*count)/64, (*count)%64);
+}
+
+void add_word(int* count, char*buffer, char word) 
+{
+  fbputchar(word, 22 + (*count)/22, (*count)%22);
+  buffer[(*count)++] = word;
+  buffer[*count] = '\0';
+  fbputchar('|', 22 + (*count)/64, (*count)%64);
+}
+
+
 int main()
 {
   int err;
@@ -143,7 +160,7 @@ int main()
   /* Start the network thread */
   pthread_create(&network_thread, NULL, network_thread_f, NULL);
 
-  /* Look for and handle keypresses */
+/*
   for (;;) {
     libusb_interrupt_transfer(keyboard, endpoint_address,
 			      (unsigned char *) &packet, sizeof(packet),
@@ -155,12 +172,12 @@ int main()
       char tmp = interpret_key(packet);
       fbputchar(tmp, 6, 10);
       fbputs(keystate, 6, 0);
-      if (packet.keycode[0] == 0x29) { /* ESC pressed? */
+      if (packet.keycode[0] == 0x29) {
 	break;
       }
     }
   }
-
+*/
 
   for (;;) {
     int exit = 0;
@@ -178,7 +195,7 @@ int main()
           if (count == 0)
             continue;
           else
-            delete_word(&count, &buffer);
+            delete_word(&count, &buffer[0]);
         } else if (packet.keycode[0] == 0x28) { // enter
           break;
         } else if (packet.keycode[0] == 0x29) { //esc
@@ -188,8 +205,9 @@ int main()
           if (count >= BUFFER_SIZE - 1)
             continue;
           char tmp = interpret_key(packet);
-          add_word(&count, &buffer, tmp);
+          add_word(&count, &buffer[0], tmp);
         }
+      }
     }
     if (exit)
       break;
@@ -208,21 +226,6 @@ int main()
   return 0;
 }
 
-void delete_word(int* count, char* buffer)
-{
-  (*count)--;
-  buffer[count] = '\0';
-  // fbputchar(' ', 22 + (*count)/22, (*count)%22);
-  fbputchar('|', 22 + count/64, count%64);
-}
-
-void add_word(int* count, char*buffer, char word);
-{
-  fbputchar(tmp, 22 + count/22, count%22);
-  buffer[(*count)++] = tmp;
-  buffer[*buffer] = '\0';
-  fbputchar('|', 22 + count/64, count%64);
-}
 
 void *network_thread_f(void *ignored)
 {
@@ -241,4 +244,3 @@ void *network_thread_f(void *ignored)
 
   return NULL;
 }
-
