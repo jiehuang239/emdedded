@@ -41,14 +41,22 @@ uint8_t endpoint_address;
 
 pthread_t network_thread;
 void *network_thread_f(void *);
-/*
-char interpretKey(usb_keyboard_packet packet)
+
+char interpret_key(usb_keyboard_packet packet)
 {
-  
-  return '0';
+  int shift = 0;
+  if (packet.modifiers && 0x22)
+    shift = 1;
+
+  if (!shift && packet.keycode[0] >= 0x04 && packet.keycode[0] <= 0x1d)
+    return char(packet.keycode[0] + 93);
+  else if (shift && packet.keycode[0] >= 0x04 && packet.keycode[0] <= 0x1d)
+    return char(packet.keycode[0] + 61);
+  else
+    return '.';
 }
 
-*/
+
 int main()
 {
   int err;
@@ -117,6 +125,8 @@ int main()
       sprintf(keystate, "%02x %02x %02x", packet.modifiers, packet.keycode[0],
 	      packet.keycode[1]);
       printf("%s\n", keystate);
+      char tmp = interpret_key(packet);
+      fbputchar(tmp, 6, 10);
       fbputs(keystate, 6, 0);
       if (packet.keycode[0] == 0x29) { /* ESC pressed? */
 	break;
