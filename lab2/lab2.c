@@ -26,6 +26,7 @@
 #define UNDERLINE   95
 #define SPACE       32
 
+int count = 0;
 /*
  * References:
  *
@@ -36,7 +37,7 @@
 
 /* keyboard numnber --> ASCII
  * 1 - 9, 0, ENTER, ESC, BACKSPACE, TAB, SPACE,
- * -, +, [, ], \, NOT_FOUND, ;, ', `, ,, ., /
+ * -, =, [, ], \, NOT_FOUND, ;, ', `, ,, ., /
  */
 static char keyboard_table[] = {
   0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x00, 0x00, 0x00, 0x09, 0x20,
@@ -44,8 +45,8 @@ static char keyboard_table[] = {
 };
 
 /* shift_keyboard numnber --> ASCII
- * 1 - 9, 0, ENTER, ESC, BACKSPACE, TAB, SPACE,
- * -, +, [, ], \, NOT_FOUND, ;, ', `, ,, ., /
+ * ! - ), ENTER, ESC, BACKSPACE, TAB, SPACE,
+ * _, +, {, }, |, NOT_FOUND, :, ", ~, <, >, ?
  */
 static char shift_keyboard_table[] = {
   0x21, 0x40, 0x23, 0x24, 0x25, 0x5e, 0x26, 0x2a, 0x28, 0x29, 0x00, 0x00, 0x00, 0x09, 0x20,
@@ -160,9 +161,12 @@ int main()
     }
   }
 
-/*
+
   for (;;) {
     int exit = 0;
+    count = 0;
+    char buffer[BUFFER_SIZE + 1];
+    buffer[BUFFER_SIZE] = '\0';
     for (;;) {
       libusb_interrupt_transfer(keyboard, endpoint_address,
             (unsigned char *) &packet, sizeof(packet),
@@ -170,22 +174,31 @@ int main()
       if (transferred == sizeof(packet)) {
 
 
-        if (packet.keycode[0] == 0x111) { 
-
-        } else if (packet.keycode[0] == 0x111) { 
-
-        } else if (packet.keycode[0] == 0x29) { 
+        if (packet.keycode[0] == 0x2a) { // delete
+          if (count == 0)
+            continue;
+          else
+            delete_word(&count, &buffer);
+        } else if (packet.keycode[0] == 0x28) { // enter
+          break;
+        } else if (packet.keycode[0] == 0x29) { //esc
           exit = 1;
           break;
-        } else { 
-
+        } else {
+          if (count >= BUFFER_SIZE - 1)
+            continue;
+          char tmp = interpret_key(packet);
+          add_word(&count, &buffer, tmp);
         }
     }
     if (exit)
       break;
+    fbclear(22, 23, 0, 63);
+
+
   }
 
-*/
+
   /* Terminate the network thread */
   pthread_cancel(network_thread);
 
@@ -193,6 +206,22 @@ int main()
   pthread_join(network_thread, NULL);
 
   return 0;
+}
+
+void delete_word(int* count, char* buffer)
+{
+  (*count)--;
+  buffer[count] = '\0';
+  // fbputchar(' ', 22 + (*count)/22, (*count)%22);
+  fbputchar('|', 22 + count/64, count%64);
+}
+
+void add_word(int* count, char*buffer, char word);
+{
+  fbputchar(tmp, 22 + count/22, count%22);
+  buffer[(*count)++] = tmp;
+  buffer[*buffer] = '\0';
+  fbputchar('|', 22 + count/64, count%64);
 }
 
 void *network_thread_f(void *ignored)
