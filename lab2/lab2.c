@@ -95,7 +95,7 @@ void delete_word(int* count, char* buffer)
 
 void add_word(int* count, char* buffer, char word) 
 {
-  fbputchar(word, 22 + (*count)/22, (*count)%22);
+  fbputchar(word, 22 + (*count)/64, (*count)%64);
   buffer[(*count)++] = word;
   buffer[*count] = '\0';
   fbputchar('|', 22 + (*count)/64, (*count)%64);
@@ -154,15 +154,17 @@ int main()
   for (;;) {
     int exit = 0;
     count = 0;
-    char buffer[BUFFER_SIZE + 1];
-    buffer[BUFFER_SIZE] = '\0';
+    char buffer[BUFFER_SIZE];
+    buffer[BUFFER_SIZE - 1] = '\0';
     for (;;) {
       libusb_interrupt_transfer(keyboard, endpoint_address,
             (unsigned char *) &packet, sizeof(packet),
             &transferred, 0);
       if (transferred == sizeof(packet)) {
-
-        if (packet.keycode[0] == 0x2a) { // delete
+	
+	if (packet.keycode[0] == 0x00)
+	  continue;
+        else if (packet.keycode[0] == 0x2a) { // delete
           if (count == 0)
             continue;
           else
@@ -173,7 +175,7 @@ int main()
           exit = 1;
           break;
         } else {
-          if (count >= BUFFER_SIZE)
+          if (count >=  BUFFER_SIZE - 1)
             continue;
           char tmp = interpret_key(packet);
           add_word(&count, &buffer[0], tmp);
