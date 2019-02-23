@@ -184,10 +184,10 @@ while(curr!=end){
 
 }
 void initScreen(){
-fbputs("received:",0,0);
+fbputs("received:",1,0);
 fbputs("sent:",11,0);
-drawLine(10,0,63);
-drawLine(20,0,63);
+drawLine(11,0,63);
+drawLine(22,0,63);
 
 }
 static unsigned char font[] = {

@@ -42,16 +42,16 @@ uint8_t endpoint_address;
 pthread_t network_thread;
 void *network_thread_f(void *);
 
-char interpret_key(usb_keyboard_packet packet)
+char interpret_key(struct usb_keyboard_packet packet)
 {
   int shift = 0;
   if (packet.modifiers && 0x22)
     shift = 1;
 
   if (!shift && packet.keycode[0] >= 0x04 && packet.keycode[0] <= 0x1d)
-    return char(packet.keycode[0] + 93);
+    return (char)(packet.keycode[0] + 93);
   else if (shift && packet.keycode[0] >= 0x04 && packet.keycode[0] <= 0x1d)
-    return char(packet.keycode[0] + 61);
+    return (char)(packet.keycode[0] + 61);
   else
     return '.';
 }
@@ -177,7 +177,7 @@ void *network_thread_f(void *ignored)
   while ( (n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0 ) {
     recvBuf[n] = '\0';
     printf("%s", recvBuf);
-    fbputs(recvBuf, 8, 0);
+    fbputs(recvBuf, 0, 0);
   }
 
   return NULL;
