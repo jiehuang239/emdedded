@@ -86,13 +86,14 @@ char interpret_key(struct usb_keyboard_packet packet)
 
 void delete_word(int* count, char* buffer)
 {
+  fbputchar(' ', 22 + (*count)/64, (*count)%64);
   (*count)--;
   buffer[*count] = '\0';
   // fbputchar(' ', 22 + (*count)/22, (*count)%22);
   fbputchar('|', 22 + (*count)/64, (*count)%64);
 }
 
-void add_word(int* count, char*buffer, char word) 
+void add_word(int* count, char* buffer, char word) 
 {
   fbputchar(word, 22 + (*count)/22, (*count)%22);
   buffer[(*count)++] = word;
@@ -118,17 +119,6 @@ int main()
 
   fbclearall();
 
-  /* Draw rows of asterisks across the top and bottom of the screen */
-  /*for (col = 0 ; col < 64 ; col++) {
-    fbputchar('*', 0, col);
-    fbputchar('*', 23, col);
-  }
-
-  fbputchar('*', 5, 5);
-  fbputchar('*', 4, 5);
-  fbputs("Hello CSEE 4840 World!", 4, 10);
-  scrolldown(3, 4);
-  */
   initScreen();
   /* Open the keyboard */
   if ( (keyboard = openkeyboard(&endpoint_address)) == NULL ) {
@@ -160,24 +150,6 @@ int main()
   /* Start the network thread */
   pthread_create(&network_thread, NULL, network_thread_f, NULL);
 
-/*
-  for (;;) {
-    libusb_interrupt_transfer(keyboard, endpoint_address,
-			      (unsigned char *) &packet, sizeof(packet),
-			      &transferred, 0);
-    if (transferred == sizeof(packet)) {
-      sprintf(keystate, "%02x %02x %02x", packet.modifiers, packet.keycode[0],
-	      packet.keycode[1]);
-      printf("%s\n", keystate);
-      char tmp = interpret_key(packet);
-      fbputchar(tmp, 6, 10);
-      fbputs(keystate, 6, 0);
-      if (packet.keycode[0] == 0x29) {
-	break;
-      }
-    }
-  }
-*/
 
   for (;;) {
     int exit = 0;
@@ -190,7 +162,6 @@ int main()
             &transferred, 0);
       if (transferred == sizeof(packet)) {
 
-
         if (packet.keycode[0] == 0x2a) { // delete
           if (count == 0)
             continue;
@@ -198,22 +169,21 @@ int main()
             delete_word(&count, &buffer[0]);
         } else if (packet.keycode[0] == 0x28) { // enter
           break;
-        } else if (packet.keycode[0] == 0x29) { //esc
+        } else if (packet.keycode[0] == 0x29) { // esc
           exit = 1;
           break;
         } else {
-          if (count >= BUFFER_SIZE - 1)
+          if (count >= BUFFER_SIZE)
             continue;
           char tmp = interpret_key(packet);
           add_word(&count, &buffer[0], tmp);
         }
+
       }
     }
     if (exit)
       break;
     fbclear(22, 23, 0, 63);
-
-
   }
 
 
