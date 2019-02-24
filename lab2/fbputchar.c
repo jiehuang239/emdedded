@@ -187,7 +187,7 @@ while(curr!=end){
 
 }
 void initScreen(){
-fbputs("received:",1,0);
+fbputs("received:",0,0);
 fbputs("sent:",11,0);
 drawLine(11,0,63);
 drawLine(21,0,63);

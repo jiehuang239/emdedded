@@ -29,12 +29,14 @@
 
 typedef struct {
   int rev_row;
+  int rev_limit;
   int sen_row;
   int sen_limit;
 } screen_info;
 
 screen_info info = {
   .rev_row = 2,
+  .rev_limit = 11,
   .sen_row = 12,
   .sen_limit = 20
 };
@@ -53,8 +55,8 @@ int count = 0;
  * -, =, [, ], \, NOT_FOUND, ;, ', `, ,, ., /, CAP
  */
 static char keyboard_table[] = {
-  0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x00, 0x00, 0x00, 0x80, 0x20,
-  0x2d, 0x3d, 0x5b, 0x5d, 0x5c, 0x80, 0x3b, 0x27, 0x60, 0x2c, 0x2e, 0x2f, 0x80
+  0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x00, 0x00, 0x00, 0x00, 0x20,
+  0x2d, 0x3d, 0x5b, 0x5d, 0x5c, 0x00, 0x3b, 0x27, 0x60, 0x2c, 0x2e, 0x2f, 0x00
 };
 
 /* shift_keyboard numnber --> ASCII
@@ -62,8 +64,8 @@ static char keyboard_table[] = {
  * _, +, {, }, |, NOT_FOUND, :, ", ~, <, >, ?, CAP
  */
 static char shift_keyboard_table[] = {
-  0x21, 0x40, 0x23, 0x24, 0x25, 0x5e, 0x26, 0x2a, 0x28, 0x29, 0x00, 0x00, 0x00, 0x80, 0x20,
-  0x5f, 0x2b, 0x7b, 0x7d, 0x7c, 0x80, 0x3a, 0x22, 0x7e, 0x3c, 0x3e, 0x3f, 0x80
+  0x21, 0x40, 0x23, 0x24, 0x25, 0x5e, 0x26, 0x2a, 0x28, 0x29, 0x00, 0x00, 0x00, 0x00, 0x20,
+  0x5f, 0x2b, 0x7b, 0x7d, 0x7c, 0x00, 0x3a, 0x22, 0x7e, 0x3c, 0x3e, 0x3f, 0x00
 };
 
 
@@ -73,12 +75,13 @@ struct libusb_device_handle *keyboard;
 uint8_t endpoint_address;
 
 pthread_t network_thread;
+pthread_t cursor_thread;
 void *network_thread_f(void *);
 
 char interpret_key(struct usb_keyboard_packet packet, int index)
 {
   int shift = 0;
-  if (packet.modifiers && 0x22)
+  if (packet.modifiers & 0x22)
     shift = 1;
 
   if (shift) {
@@ -93,7 +96,7 @@ char interpret_key(struct usb_keyboard_packet packet, int index)
     else if (packet.keycode[index] <= 0x39)
       return (char)(keyboard_table[packet.keycode[index] - 0x1e]);
   }
-  return 0x80;
+  return 0x00;
 }
 
 
@@ -123,7 +126,7 @@ int main()
 
   struct usb_keyboard_packet packet;
   int transferred;
-  char keystate[12];
+  // char keystate[12];
 
   if ((err = fbopen()) != 0) {
     fprintf(stderr, "Error: Could not open framebuffer: %d\n", err);
@@ -162,6 +165,7 @@ int main()
 
   /* Start the network thread */
   pthread_create(&network_thread, NULL, network_thread_f, NULL);
+  pthread_create(&cursor_thread, NULL, cursor_thread_f, NULL);
 
 
   for (;;) {
@@ -176,63 +180,51 @@ int main()
             &transferred, 0);
       
       if (transferred == sizeof(packet)) {
-
-        sprintf(keystate, "%02x %02x %02x", packet.modifiers, packet.keycode[0], packet.keycode[1]);
-        fbputs(keystate, 2, 0);	
-	if (packet.keycode[0] < 0x04) {
-	  prev = 0x00;
-	  continue;
-        } else if (packet.keycode[0] == 0x2a) { // delete
+        if (packet.keycode[0] < 0x04) {
+          prev = 0x00;
+          continue;
+        } else if (packet.keycode[0] == 0x2a) { // Delete
           if (count == 0)
             continue;
           else
-            delete_word(&count, &buffer[0]);
-        } else if (packet.keycode[0] == 0x28) { // enter
+            delete_word(&count, buffer);
+        } else if (packet.keycode[0] == 0x28) { // Enter
           break;
-        } else if (packet.keycode[0] == 0x29) { // esc
+        } else if (packet.keycode[0] == 0x29) { // Esc
           exit = 1;
           break;
         } else if (packet.keycode[1] == 0x00) {
-          sprintf(keystate, "%02x %02x %02x", prev, prev, prev);
-          fbputs(keystate, 5, 0);	
-
-
           if (count >=  BUFFER_SIZE - 1 || packet.keycode[0] == prev)
             continue;
           char tmp = interpret_key(packet, 0);
-          if (tmp >= 0x80)
-	    continue;
+          if (tmp == 0x00)
+	          continue;
           add_word(&count, &buffer[0], tmp);
-	  prev = packet.keycode[0];
+	        prev = packet.keycode[0];
         } else {
-	  if (count >=  BUFFER_SIZE - 1)
+	        if (count >=  BUFFER_SIZE - 1)
             continue;
-
-	  sprintf(keystate, "%02x %02x %02x", prev, prev, prev);
-          fbputs(keystate, 3, 0);	
-
           int index = 0;
           if (prev == packet.keycode[0])
-	    index = 1;
+	          index = 1;
           char tmp = interpret_key(packet, index);
-          if (tmp >= 0x80)
-	    continue;
+          if (tmp == 0x00)
+	          continue;
           add_word(&count, &buffer[0], tmp); 
           prev = packet.keycode[index];
-	}
-
+	      }
       }
     }
     if (exit)
       break;
     fbclear(22, 23, 0, 63);
-    int n = write(sockfd, &buffer, BUFFER_SIZE);
-    if (n < 0)
-      printf("Failed\n");
+    int n = write(sockfd, &buffer, count);
+    if (n <= 0)
+      printf("Sending packet failed\n");
 
     if (info.sen_limit - info.sen_row < 2) {
-      scrolldown(12, info.sen_limit);
-      scrolldown(12, info.sen_limit);
+      scrolldown(info.rev_limit + 1, info.sen_limit);
+      scrolldown(info.rev_limit + 1, info.sen_limit);
       info.sen_row -= 2;
     }
     fbputs(buffer, info.sen_row, 0);
@@ -246,9 +238,11 @@ int main()
 
   /* Terminate the network thread */
   pthread_cancel(network_thread);
+  pthread_cancel(cursor_thread);
 
   /* Wait for the network thread to finish */
   pthread_join(network_thread, NULL);
+  pthread_join(cursor_thread, NULL);
 
   return 0;
 }
@@ -260,14 +254,30 @@ void *network_thread_f(void *ignored)
   int n;
   /* Receive data */
   while ( (n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0 ) {
-
-
-
-
     recvBuf[n] = '\0';
     printf("%s", recvBuf);
-    fbputs(recvBuf, 0, 0);
+    if (info.rev_limit - info.rev_row < 2) {
+      scrolldown(1, info.rev_limit);
+      scrolldown(1, info.rev_limit);
+      info.rev_row -= 2;
+    }
+    fbputs(recvBuf, infor.rev_row, 0);
+    if (n < 65)
+      info.rev_row++;
+    else
+      info.rev_row += 2;
+
   }
 
   return NULL;
+}
+
+void *network_thread_f(void *ignored)
+{
+  for (;;) {
+    fbputchar(' ', 22 + count/64, count%64);
+    usleep(500);
+    fbputchar('|', 22 + count/64, count%64);
+    usleep(500);
+  }
 }
