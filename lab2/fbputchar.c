@@ -24,8 +24,8 @@
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 16
 #define BITS_PER_PIXEL 32
-#define COL_MAX 64
-#define ROW_MAX 24
+#define COL_MAX 63
+#define ROW_MAX 23
  
 
 struct fb_var_screeninfo fb_vinfo;
@@ -61,7 +61,7 @@ int fbopen()
  * Draw the given character at the given row/column.
  * fbopen() must be called first.
  */
-void fbputchar(char c, int row, int col)
+void fbputchar(char c, int row, int col,struct color font,struct color background)
 {
   int x, y;
   unsigned char pixels, *pixelp = font + FONT_HEIGHT * c;
@@ -75,27 +75,27 @@ void fbputchar(char c, int row, int col)
     mask = 0x80;
     for (x = 0 ; x < FONT_WIDTH ; x++) {
       if (pixels & mask) {	
-        pixel[0] = 255; /* Red */
-        pixel[1] = 255; /* Green */
-        pixel[2] = 255; /* Blue */
-        pixel[3] = 0;
+        pixel[0] = font.R; /* Red */
+        pixel[1] = font.G; /* Green */
+        pixel[2] = font.B; /* Blue */
+        pixel[3] = font.notused;
       } else {
-        pixel[0] = 0;
-        pixel[1] = 0;
-        pixel[2] = 0;
-        pixel[3] = 0;
+        pixel[0] = background.R;
+        pixel[1] = backgroung.G;
+        pixel[2] = backgroung.B;
+        pixel[3] = background.notused;
       }
       pixel += 4;
       if (pixels & mask) {
-        pixel[0] = 255; /* Red */
-        pixel[1] = 255; /* Green */
-        pixel[2] = 255; /* Blue */
-        pixel[3] = 0;
+        pixel[0] = font.R; /* Red */
+        pixel[1] = font.G; /* Green */
+        pixel[2] = font.B; /* Blue */
+        pixel[3] = font.notused;
       } else {
-        pixel[0] = 0;
-        pixel[1] = 0;
-        pixel[2] = 0;
-        pixel[3] = 0;
+        pixel[0] = backgroung.R;
+        pixel[1] = backgroung.G;
+        pixel[2] = backgroung.B;
+        pixel[3] = backgroung.notused;
       }
       pixel += 4;
       mask >>= 1;
@@ -117,7 +117,7 @@ void fbputs(const char *s, int row, int col)
 	row++;
  }
  if (isprint(c))
-   fbputchar(c, row, col++);
+   fbputchar(c, row, col++,grey,greyBlack);
  
 }
 }
@@ -155,18 +155,21 @@ void scrolldown(int row_h, int row_t)
 }
 
 
-void fbclear(int row_h, int row_t, int col_h, int col_t)
+void fbclear(int row_h, int row_t,struct color background)
 {
   unsigned char *start = framebuffer +
     (row_h * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
-    (col_h * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
+    (0 * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
   unsigned char *curr, *end;
   for (int i = row_h; i <= row_t; i++) {
     end = start + fb_finfo.line_length * FONT_HEIGHT * 2;
     curr = start;
     while (curr != end) {
-      *curr = 0;
-      curr++;
+      curr[0] = backgroung.R;
+      curr[1]=background.G;
+      curr[2]=background.B;
+      curr[3]=background.notused;
+      curr+=4;
     }
     start = end;
   }
@@ -181,12 +184,22 @@ void invert(int row, int col)
   unsigned char *pixel;
   for (int i = 0; i < FONT_HEIGHT * 2; i++, start += fb_finfo.line_length) {
     pixel = start;
-    for (int j = 0; j < FONT_WIDTH * 8; j++) {
-      if (*pixel)
-        *pixel = 0;
-      else
-	*pixel = 255;
-      pixel++;
+    for (int j = 0; j < FONT_WIDTH * 2; j++) {
+      if (pixel[0]=FONTGLOBAL.R){
+      	pixel[0] = BACKGROUNDGLOBAL->R;
+        pixel[1]=BACKGROUNDGLOBAL->G;
+        pixel[2]=BACKGROUNDGLOBAL->B;
+        pixel[3]=BACKGROUNDGLOBAL->notused;
+	  }
+        
+      else{
+      	pixel[0] =FONTGLOBAL->R;
+        pixel[1]=FONTGLOBAL->G;
+        pixel[2]=FONTGLOBAL->B;
+        pixel[3]=FONTGLOBAL->notused;
+	  }
+	
+      pixel+=4;
     }
   }
 }
@@ -209,6 +222,7 @@ while(curr!=end){
 
 }
 void initScreen(){
+fbclear(0, ROW_MAX,greyBlack)
 fbputs("received:",0,0);
 fbputs("sent:",11,0);
 drawLine(11,0,63);

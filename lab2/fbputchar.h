@@ -15,7 +15,8 @@ struct color{
 struct color darkBlue={
 	.R=1,
 	.G=80,
-	.B=227£¬
+	.B=227,
+	.notused=0
  
 };
 struct color lightBlue={
@@ -26,19 +27,23 @@ struct color lightBlue={
 struct color darkgrey={
 	.R=185,
 	.G=182,
-	.B=177
+	.B=177,
+	.notused=0
 };
 struct color grey={
 	.R=208,
 	.G=214,
-	.B=217
+	.B=217,
+	.notused=0
 };
 struct color greyBlack={
 	.R=39,
 	.G=32,
-	.B=29
+	.B=29,
+	.notused=0
 };
-
+struct color *FONTGLOBAL=&greyBlack;
+struct color *BACKGROUNDGLOBAL=&grey;
 extern int fbopen(void);
 extern void fbputchar(char, int, int);
 extern void fbputs(const char *, int, int);
