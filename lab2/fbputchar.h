@@ -6,6 +6,38 @@
 #define FBOPEN_VSCREENINFO -3  /* Couldn't read the variable info */
 #define FBOPEN_MMAP -4         /* Couldn't mmap the framebuffer memory */
 #define FBOPEN_BPP -5          /* Unexpected bits-per-pixel */
+struct color{
+	char R;
+	char G;
+	char B;
+	char notused;
+}; 
+struct color darkBlue={
+	.R=1,
+	.G=80,
+	.B=227£¬
+ 
+};
+struct color lightBlue={
+	.R=83,
+	.G=141,
+	.B=231
+};
+struct color darkgrey={
+	.R=185,
+	.G=182,
+	.B=177
+};
+struct color grey={
+	.R=208,
+	.G=214,
+	.B=217
+};
+struct color greyBlack={
+	.R=39,
+	.G=32,
+	.B=29
+};
 
 extern int fbopen(void);
 extern void fbputchar(char, int, int);

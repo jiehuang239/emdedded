@@ -23,7 +23,9 @@
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 16
 #define BITS_PER_PIXEL 32
-#define COL_MAX 
+#define COL_MAX 64
+#define ROW_MAX 24
+ 
 
 struct fb_var_screeninfo fb_vinfo;
 struct fb_fix_screeninfo fb_finfo;
