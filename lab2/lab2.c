@@ -76,7 +76,6 @@ uint8_t endpoint_address;
 pthread_t network_thread;
 pthread_t cursor_thread;
 void *network_thread_f(void *);
-void *cursor_thread_f(void *);
 
 char interpret_key(struct usb_keyboard_packet packet, int index);
 void delete_word(char* buffer);
@@ -130,7 +129,6 @@ int main()
 
   /* Start the network thread */
   pthread_create(&network_thread, NULL, network_thread_f, NULL);
-  pthread_create(&cursor_thread, NULL, cursor_thread_f, NULL);
 
 
   for (;;) {
@@ -208,11 +206,9 @@ int main()
 
   /* Terminate the network thread */
   pthread_cancel(network_thread);
-  pthread_cancel(cursor_thread);
 
   /* Wait for the network thread to finish */
   pthread_join(network_thread, NULL);
-  pthread_join(cursor_thread, NULL);
 
   return 0;
 }
@@ -242,16 +238,6 @@ void *network_thread_f(void *ignored)
   return NULL;
 }
 
-void *cursor_thread_f(void *ignored)
-{
-  for (;;) {
-    fbputchar(' ', 22 + count/64, count%64);
-    sleep(1);
-    fbputchar('|', 22 + count/64, count%64);
-    sleep(1);
-  }
-}
-
 char interpret_key(struct usb_keyboard_packet packet, int index)
 {
   int shift = 0;
@@ -276,21 +262,37 @@ char interpret_key(struct usb_keyboard_packet packet, int index)
 
 void delete_word(char* buffer)
 {
-  fbputchar(' ', 22 + count/64, count%64);
+  char *curr = &buffer[cursor_count - 1];
+  char *end = &buffer[count];
+  while (curr != end) {
+    *curr = *(curr + 1);
+    curr++;
+  }
+  fbclear(22, 23, 0, 63);
+  fbputs(buffer, 22, 0);
   count--;
   cursor_count--;
-  buffer[count] = '\0';
-  // fbputchar(' ', 22 + (*count)/22, (*count)%22);
-  fbputchar('|', 22 + count/64, count%64);
+  invert(22 + cursor_count/64, cursor_count%64);
+
 }
 
 void add_word(char* buffer, char word) 
 {
-  fbputchar(word, 22 + count/64, count%64);
-  buffer[count++] = word;
+
+  char *curr = &buffer[cursor_count];
+  char *end = &buffer[count + 1];
+
+  while (curr != end) {
+    *end = *(end - 1);
+    end--;
+  }
+  *curr = word;
+  fbclear(22, 23, 0, 63);
+  fbputs(buffer, 22, 0);
+  count++;
   cursor_count++;
-  buffer[count] = '\0';
-  fbputchar('|', 22 + count/64, count%64);
+  invert(22 + cursor_count/64, cursor_count%64);
+
 }
 
 void interpret_arrow(char* buffer, unsigned char key)
