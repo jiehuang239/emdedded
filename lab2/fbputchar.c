@@ -213,9 +213,12 @@ unsigned char *start = framebuffer +
     (col_h * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
 unsigned char *end = start+FONT_HEIGHT/8*fb_finfo.line_length;
 unsigned char*curr=start;
-while(curr!=end){
-  *curr=255;
-   curr++;
+while(curr<end){
+  curr[0]=lightBlue.R;
+  curr[1]=lightBlue.G;
+  curr[2]=lightBlue.B;
+  curr[3]=lightBlue.notused
+   curr+=4;
 }
 
 
