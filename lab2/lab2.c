@@ -2,7 +2,7 @@
  *
  * CSEE 4840 Lab 2 for 2019
  *
- * Name/UNI: Please Changeto Yourname (pcy2301)
+ * Name/UNI: Jie Huang/jh4000, Kaige Zhang/kz2325
  */
 #include "fbputchar.h"
 #include <stdio.h>
@@ -24,8 +24,6 @@
 
 #define BUFFER_SIZE 128
 
-#define UNDERLINE   95
-#define SPACE       32
 
 typedef struct {
   int rev_row;
@@ -35,8 +33,8 @@ typedef struct {
 } screen_info;
 
 screen_info info = {
-  .rev_row = 2,
-  .rev_limit = 11,
+  .rev_row = 1,
+  .rev_limit = 10,
   .sen_row = 12,
   .sen_limit = 20
 };
@@ -77,45 +75,11 @@ uint8_t endpoint_address;
 pthread_t network_thread;
 pthread_t cursor_thread;
 void *network_thread_f(void *);
+void *cursor_thread_f(void *);
 
-char interpret_key(struct usb_keyboard_packet packet, int index)
-{
-  int shift = 0;
-  if (packet.modifiers & 0x22)
-    shift = 1;
-
-  if (shift) {
-    if (packet.keycode[index] >= 0x04 && packet.keycode[index] <= 0x1d)
-      return (char)(packet.keycode[index] + 61);
-    else if (packet.keycode[index] <= 0x39)
-      return (char)(shift_keyboard_table[packet.keycode[index] - 0x1e]);
-
-  } else {
-    if (packet.keycode[index] >= 0x04 && packet.keycode[index] <= 0x1d)
-      return (char)(packet.keycode[index] + 93);
-    else if (packet.keycode[index] <= 0x39)
-      return (char)(keyboard_table[packet.keycode[index] - 0x1e]);
-  }
-  return 0x00;
-}
-
-
-void delete_word(int* count, char* buffer)
-{
-  fbputchar(' ', 22 + (*count)/64, (*count)%64);
-  (*count)--;
-  buffer[*count] = '\0';
-  // fbputchar(' ', 22 + (*count)/22, (*count)%22);
-  fbputchar('|', 22 + (*count)/64, (*count)%64);
-}
-
-void add_word(int* count, char* buffer, char word) 
-{
-  fbputchar(word, 22 + (*count)/64, (*count)%64);
-  buffer[(*count)++] = word;
-  buffer[*count] = '\0';
-  fbputchar('|', 22 + (*count)/64, (*count)%64);
-}
+char interpret_key(struct usb_keyboard_packet packet, int index);
+void delete_word(int* count, char* buffer);
+void add_word(int* count, char* buffer, char word);
 
 
 int main()
@@ -218,11 +182,11 @@ int main()
     if (exit)
       break;
     fbclear(22, 23, 0, 63);
-    int n = write(sockfd, &buffer, count);
+    int n = write(sockfd, &buffer, count - 1);
     if (n <= 0)
       printf("Sending packet failed\n");
 
-    if (info.sen_limit - info.sen_row < 2) {
+    if (info.sen_limit - info.sen_row <= 2) {
       scrolldown(info.rev_limit + 1, info.sen_limit);
       scrolldown(info.rev_limit + 1, info.sen_limit);
       info.sen_row -= 2;
@@ -255,13 +219,13 @@ void *network_thread_f(void *ignored)
   /* Receive data */
   while ( (n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0 ) {
     recvBuf[n] = '\0';
-    printf("%s", recvBuf);
+    printf("len: %d, %s\n", n, recvBuf);
     if (info.rev_limit - info.rev_row < 2) {
       scrolldown(1, info.rev_limit);
       scrolldown(1, info.rev_limit);
       info.rev_row -= 2;
     }
-    fbputs(recvBuf, infor.rev_row, 0);
+    fbputs(recvBuf, info.rev_row, 0);
     if (n < 65)
       info.rev_row++;
     else
@@ -272,12 +236,51 @@ void *network_thread_f(void *ignored)
   return NULL;
 }
 
-void *network_thread_f(void *ignored)
+void *cursor_thread_f(void *ignored)
 {
   for (;;) {
     fbputchar(' ', 22 + count/64, count%64);
-    usleep(500);
+    sleep(1);
     fbputchar('|', 22 + count/64, count%64);
-    usleep(500);
+    sleep(1);
   }
+}
+
+char interpret_key(struct usb_keyboard_packet packet, int index)
+{
+  int shift = 0;
+  if (packet.modifiers & 0x22)
+    shift = 1;
+
+  if (shift) {
+    if (packet.keycode[index] >= 0x04 && packet.keycode[index] <= 0x1d)
+      return (char)(packet.keycode[index] + 61);
+    else if (packet.keycode[index] <= 0x39)
+      return (char)(shift_keyboard_table[packet.keycode[index] - 0x1e]);
+
+  } else {
+    if (packet.keycode[index] >= 0x04 && packet.keycode[index] <= 0x1d)
+      return (char)(packet.keycode[index] + 93);
+    else if (packet.keycode[index] <= 0x39)
+      return (char)(keyboard_table[packet.keycode[index] - 0x1e]);
+  }
+  return 0x00;
+}
+
+
+void delete_word(int* count, char* buffer)
+{
+  fbputchar(' ', 22 + (*count)/64, (*count)%64);
+  (*count)--;
+  buffer[*count] = '\0';
+  // fbputchar(' ', 22 + (*count)/22, (*count)%22);
+  fbputchar('|', 22 + (*count)/64, (*count)%64);
+}
+
+void add_word(int* count, char* buffer, char word) 
+{
+  fbputchar(word, 22 + (*count)/64, (*count)%64);
+  buffer[(*count)++] = word;
+  buffer[*count] = '\0';
+  fbputchar('|', 22 + (*count)/64, (*count)%64);
 }
