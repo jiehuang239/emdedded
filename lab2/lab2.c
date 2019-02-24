@@ -245,9 +245,9 @@ void *network_thread_f(void *ignored)
 void *cursor_thread_f(void *ignored)
 {
   for (;;) {
-    fbputchar(' ', 22 + count/64, count%64);
+    // fbputchar(' ', 22 + count/64, count%64);
     sleep(1);
-    fbputchar('|', 22 + count/64, count%64);
+    // fbputchar('|', 22 + count/64, count%64);
     sleep(1);
   }
 }
@@ -276,21 +276,48 @@ char interpret_key(struct usb_keyboard_packet packet, int index)
 
 void delete_word(char* buffer)
 {
-  fbputchar(' ', 22 + count/64, count%64);
+  if (cursor_count == count)
+    return;
+
+  char *curr = &buffer[cursor_count];
+  char *end = &buffer[count];
+  while (curr != end) {
+    *curr = *(curr + 1)
+    curr++;
+  }
+  fbclear(22, 23, 0, 63);
+  fbputs(buffer, 22, 0);
   count--;
-  cursor_count--;
-  buffer[count] = '\0';
-  // fbputchar(' ', 22 + (*count)/22, (*count)%22);
-  fbputchar('|', 22 + count/64, count%64);
+  invert(22 + cursor_count/64, cursor_count%64);
+
+  // fbputchar(' ', 22 + count/64, count%64);
+  // count--;
+  // cursor_count--;
+  // buffer[count] = '\0';
+  // fbputchar('|', 22 + count/64, count%64);
 }
 
 void add_word(char* buffer, char word) 
 {
-  fbputchar(word, 22 + count/64, count%64);
-  buffer[count++] = word;
-  cursor_count++;
-  buffer[count] = '\0';
-  fbputchar('|', 22 + count/64, count%64);
+
+  char *curr = &buffer[cursor_count];
+  char *end = &buffer[count + 1];
+
+  while (curr != end) {
+    *end = *(end - 1)
+    end--;
+  }
+  *curr = word;
+  fbclear(22, 23, 0, 63);
+  fbputs(buffer, 22, 0);
+  count++;
+  invert(22 + cursor_count/64, cursor_count%64);
+
+  // fbputchar(word, 22 + count/64, count%64);
+  // buffer[count++] = word;
+  // cursor_count++;
+  // buffer[count] = '\0';
+  // fbputchar('|', 22 + count/64, count%64);
 }
 
 void interpret_arrow(char* buffer, unsigned char key)
