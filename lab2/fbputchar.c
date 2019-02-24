@@ -175,7 +175,6 @@ void invert(int row, int col)
   unsigned char *start = framebuffer +
     (row * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
     (col * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
-  unsigned char *end = start + FONT_HEIGHT * 2 * fb_finfo.line_length;
   unsigned char *pixel;
   for (int i = 0; i < FONT_HEIGHT * 2; i++, start += fb_finfo.line_length) {
     pixel = start;
@@ -211,7 +210,7 @@ fbputs("received:",0,0);
 fbputs("sent:",11,0);
 drawLine(11,0,63);
 drawLine(21,0,63);
-
+invert(22, 0);
 }
 static unsigned char font[] = {
   0x00, 0x00, 0x7e, 0xc3, 0x99, 0x99, 0xf3, 0xe7, 0xe7, 0xff, 0xe7, 0xe7, 0x7e, 0x00, 0x00, 0x00,
