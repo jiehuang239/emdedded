@@ -40,6 +40,7 @@ screen_info info = {
 };
 
 int count = 0;
+int cursor_count = 0;
 /*
  * References:
  *
@@ -78,9 +79,9 @@ void *network_thread_f(void *);
 void *cursor_thread_f(void *);
 
 char interpret_key(struct usb_keyboard_packet packet, int index);
-void delete_word(int* count, char* buffer);
-void add_word(int* count, char* buffer, char word);
-
+void delete_word(char* buffer);
+void add_word(char* buffer, char word);
+void interpret_arrow(char* buffer,unsigned char key);
 
 int main()
 {
@@ -90,7 +91,7 @@ int main()
 
   struct usb_keyboard_packet packet;
   int transferred;
-  // char keystate[12];
+  char keystate[12];
 
   if ((err = fbopen()) != 0) {
     fprintf(stderr, "Error: Could not open framebuffer: %d\n", err);
@@ -135,6 +136,7 @@ int main()
   for (;;) {
     int exit = 0;
     count = 0;
+    cursor_count = 0;
     char buffer[BUFFER_SIZE];
     buffer[0] = '\0';
     char prev = 0x00;
@@ -144,14 +146,18 @@ int main()
             &transferred, 0);
       
       if (transferred == sizeof(packet)) {
+	sprintf(keystate, "%02x %02x %02x", packet.modifiers, packet.keycode[0], packet.keycode[1]);
+	fbputs(keystate, 0, 10);
         if (packet.keycode[0] < 0x04) {
           prev = 0x00;
           continue;
+	} else if (packet.keycode[0] >= 0x4f && packet.keycode[0] <= 0x52) {
+	  interpret_arrow(buffer, packet.keycode[0]); 
         } else if (packet.keycode[0] == 0x2a) { // Delete
           if (count == 0)
             continue;
           else
-            delete_word(&count, buffer);
+            delete_word(buffer);
         } else if (packet.keycode[0] == 0x28) { // Enter
           break;
         } else if (packet.keycode[0] == 0x29) { // Esc
@@ -163,7 +169,7 @@ int main()
           char tmp = interpret_key(packet, 0);
           if (tmp == 0x00)
 	          continue;
-          add_word(&count, &buffer[0], tmp);
+          add_word(buffer, tmp);
 	        prev = packet.keycode[0];
         } else {
 	        if (count >=  BUFFER_SIZE - 1)
@@ -174,7 +180,7 @@ int main()
           char tmp = interpret_key(packet, index);
           if (tmp == 0x00)
 	          continue;
-          add_word(&count, &buffer[0], tmp); 
+          add_word(buffer, tmp); 
           prev = packet.keycode[index];
 	      }
       }
@@ -268,19 +274,56 @@ char interpret_key(struct usb_keyboard_packet packet, int index)
 }
 
 
-void delete_word(int* count, char* buffer)
+void delete_word(char* buffer)
 {
-  fbputchar(' ', 22 + (*count)/64, (*count)%64);
-  (*count)--;
-  buffer[*count] = '\0';
+  fbputchar(' ', 22 + count/64, count%64);
+  count--;
+  cursor_count--;
+  buffer[count] = '\0';
   // fbputchar(' ', 22 + (*count)/22, (*count)%22);
-  fbputchar('|', 22 + (*count)/64, (*count)%64);
+  fbputchar('|', 22 + count/64, count%64);
 }
 
-void add_word(int* count, char* buffer, char word) 
+void add_word(char* buffer, char word) 
 {
-  fbputchar(word, 22 + (*count)/64, (*count)%64);
-  buffer[(*count)++] = word;
-  buffer[*count] = '\0';
-  fbputchar('|', 22 + (*count)/64, (*count)%64);
+  fbputchar(word, 22 + count/64, count%64);
+  buffer[count++] = word;
+  cursor_count++;
+  buffer[count] = '\0';
+  fbputchar('|', 22 + count/64, count%64);
 }
+
+void interpret_arrow(char* buffer, unsigned char key)
+{
+  switch (key)
+  {
+    case 0x4f:
+      if (cursor_count == count)
+        break;
+      else {
+        invert(22 + cursor_count/64, cursor_count%64);
+        cursor_count++;
+        invert(22 + cursor_count/64, cursor_count%64); 
+      }        
+      break;
+    case 0x50:
+      fbputs("left ", 0, 20);
+      if (cursor_count == 0)
+        break;
+      else {
+        invert(22 + cursor_count/64, cursor_count%64);
+        cursor_count--;
+        invert(22 + cursor_count/64, cursor_count%64); 
+      }
+      break;
+    case 0x51:
+      fbputs("down ", 0, 20);
+      break;
+    case 0x52:
+      fbputs("up   ", 0, 20);
+      break;
+    default:
+      break;
+  }
+}
+

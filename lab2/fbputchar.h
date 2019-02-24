@@ -15,5 +15,6 @@ extern void fbclear(int row_h, int row_t, int col_h, int col_t);
 extern void fbclearall();
 extern void initScreen();
 extern void drawline(int row,int col_h,int col_t);
+extern void invert(int row, int col);
 
 #endif

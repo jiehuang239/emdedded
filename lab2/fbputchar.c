@@ -9,6 +9,7 @@
  * http://www.diskohq.com/docu/api-reference/fb_8h-source.html
  */
 
+#include <ctype.h>
 #include "fbputchar.h"
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -113,7 +114,8 @@ void fbputs(const char *s, int row, int col)
 	col = 0;
 	row++;
  }
- fbputchar(c, row, col++);
+ if (isprint(c))
+   fbputchar(c, row, col++);
  
 }
 }
@@ -168,6 +170,24 @@ void fbclear(int row_h, int row_t, int col_h, int col_t)
   }
 }
 
+void invert(int row, int col)
+{
+  unsigned char *start = framebuffer +
+    (row * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
+    (col * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
+  unsigned char *end = start + FONT_HEIGHT * 2 * fb_finfo.line_length;
+  unsigned char *pixel;
+  for (int i = 0; i < FONT_HEIGHT * 2; i++, start += fb_finfo.line_length) {
+    pixel = start;
+    for (int j = 0; j < FONT_WIDTH * 8; j++) {
+      if (*pixel)
+        *pixel = 0;
+      else
+	*pixel = 255;
+      pixel++;
+    }
+  }
+}
 /* 8 X 16 console font from /lib/kbd/consolefonts/lat0-16.psfu.gz
 
 od --address-radix=n --width=16 -v -t x1 -j 4 -N 2048 lat0-16.psfu
