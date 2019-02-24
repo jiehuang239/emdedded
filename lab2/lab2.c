@@ -24,6 +24,9 @@
 
 #define BUFFER_SIZE 128
 
+//struct color *FONTGLOBAL=&greyBlack;
+//struct color *BACKGROUNDGLOBAL=&grey;
+
 
 typedef struct {
   int rev_row;
@@ -38,6 +41,8 @@ screen_info info = {
   .sen_row = 12,
   .sen_limit = 20
 };
+
+
 
 int count = 0;
 int cursor_count = 0;
@@ -144,12 +149,15 @@ int main()
             &transferred, 0);
       
       if (transferred == sizeof(packet)) {
-	sprintf(keystate, "%02x %02x %02x", packet.modifiers, packet.keycode[0], packet.keycode[1]);
-	fbputs(keystate, 0, 10);
         if (packet.keycode[0] < 0x04) {
           prev = 0x00;
           continue;
-	} else if (packet.keycode[0] >= 0x4f && packet.keycode[0] <= 0x52) {
+	} else if (packet.keycode[0] == 0x2b) {
+          if (count >= BUFFER_SIZE - 1)
+	    continue;
+	  add_word(buffer, ' ');
+	  add_word(buffer, ' ');  
+        } else if (packet.keycode[0] >= 0x4f && packet.keycode[0] <= 0x52) {
 	  interpret_arrow(buffer, packet.keycode[0]); 
         } else if (packet.keycode[0] == 0x2a) { // Delete
           if (count == 0)
@@ -185,17 +193,17 @@ int main()
     }
     if (exit)
       break;
-    fbclear(22, 23, 0, 63);
+    fbclear(22, 23, *BACKGROUNDGLOBAL);
     int n = write(sockfd, &buffer, count - 1);
     if (n <= 0)
       printf("Sending packet failed\n");
 
-    if (info.sen_limit - info.sen_row <= 2) {
-      scrolldown(info.rev_limit + 1, info.sen_limit);
-      scrolldown(info.rev_limit + 1, info.sen_limit);
-      info.sen_row -= 2;
+
+    while (info.sen_limit - info.sen_row < count/64 + 1) {
+      scrolldown(info.rev_limit + 2, info.sen_limit, *BACKGROUNDGLOBAL);
+      info.sen_row--;
     }
-    fbputs(buffer, info.sen_row, 0);
+    fbputs(buffer, info.sen_row, 0, *BACKGROUNDGLOBAL);
     if (count < 65)
       info.sen_row++;
     else
@@ -222,12 +230,11 @@ void *network_thread_f(void *ignored)
   while ( (n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0 ) {
     recvBuf[n] = '\0';
     printf("len: %d, %s\n", n, recvBuf);
-    if (info.rev_limit - info.rev_row < 2) {
-      scrolldown(1, info.rev_limit);
-      scrolldown(1, info.rev_limit);
-      info.rev_row -= 2;
+    while (info.rev_limit - info.rev_row < count/64 + 1) {
+      scrolldown(1, info.rev_limit, *BACKGROUNDGLOBAL);
+      info.rev_row--;
     }
-    fbputs(recvBuf, info.rev_row, 0);
+    fbputs(recvBuf, info.rev_row, 0, *BACKGROUNDGLOBAL);
     if (n < 65)
       info.rev_row++;
     else
@@ -268,8 +275,8 @@ void delete_word(char* buffer)
     *curr = *(curr + 1);
     curr++;
   }
-  fbclear(22, 23, 0, 63);
-  fbputs(buffer, 22, 0);
+  fbclear(22, 23, *BACKGROUNDGLOBAL);
+  fbputs(buffer, 22, 0, *BACKGROUNDGLOBAL);
   count--;
   cursor_count--;
   invert(22 + cursor_count/64, cursor_count%64);
@@ -287,8 +294,8 @@ void add_word(char* buffer, char word)
     end--;
   }
   *curr = word;
-  fbclear(22, 23, 0, 63);
-  fbputs(buffer, 22, 0);
+  fbclear(22, 23, *BACKGROUNDGLOBAL);
+  fbputs(buffer, 22, 0, *BACKGROUNDGLOBAL);
   count++;
   cursor_count++;
   invert(22 + cursor_count/64, cursor_count%64);
@@ -309,7 +316,6 @@ void interpret_arrow(char* buffer, unsigned char key)
       }        
       break;
     case 0x50:
-      fbputs("left ", 0, 20);
       if (cursor_count == 0)
         break;
       else {
@@ -319,10 +325,8 @@ void interpret_arrow(char* buffer, unsigned char key)
       }
       break;
     case 0x51:
-      fbputs("down ", 0, 20);
       break;
     case 0x52:
-      fbputs("up   ", 0, 20);
       break;
     default:
       break;

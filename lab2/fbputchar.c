@@ -26,7 +26,42 @@
 #define BITS_PER_PIXEL 32
 #define COL_MAX 63
 #define ROW_MAX 23
+
+struct color darkBlue={
+	.R=232,
+	.G=116,
+	.B=26,
+	.notused=0
  
+};
+struct color lightBlue={
+	.R=231,
+	.G=141,
+	.B=81,
+	.notused=0
+};
+struct color darkgrey={
+	.R=177,
+	.G=182,
+	.B=185,
+	.notused=0
+};
+struct color grey={
+	.R=217,
+	.G=214,
+	.B=208,
+	.notused=0
+};
+struct color greyBlack={
+	.R=39,
+	.G=32,
+	.B=29,
+	.notused=0
+};
+
+struct color *FONTGLOBAL=&greyBlack;
+struct color *BACKGROUNDGLOBAL=&grey;
+
 
 struct fb_var_screeninfo fb_vinfo;
 struct fb_fix_screeninfo fb_finfo;
@@ -61,7 +96,7 @@ int fbopen()
  * Draw the given character at the given row/column.
  * fbopen() must be called first.
  */
-void fbputchar(char c, int row, int col,struct color font,struct color background)
+void fbputchar(char c, int row, int col,struct color font_col,struct color background)
 {
   int x, y;
   unsigned char pixels, *pixelp = font + FONT_HEIGHT * c;
@@ -75,27 +110,27 @@ void fbputchar(char c, int row, int col,struct color font,struct color backgroun
     mask = 0x80;
     for (x = 0 ; x < FONT_WIDTH ; x++) {
       if (pixels & mask) {	
-        pixel[0] = font.R; /* Red */
-        pixel[1] = font.G; /* Green */
-        pixel[2] = font.B; /* Blue */
-        pixel[3] = font.notused;
+        pixel[0] = font_col.R; /* Red */
+        pixel[1] = font_col.G; /* Green */
+        pixel[2] = font_col.B; /* Blue */
+        pixel[3] = font_col.notused;
       } else {
         pixel[0] = background.R;
-        pixel[1] = backgroung.G;
-        pixel[2] = backgroung.B;
+        pixel[1] = background.G;
+        pixel[2] = background.B;
         pixel[3] = background.notused;
       }
       pixel += 4;
       if (pixels & mask) {
-        pixel[0] = font.R; /* Red */
-        pixel[1] = font.G; /* Green */
-        pixel[2] = font.B; /* Blue */
-        pixel[3] = font.notused;
+        pixel[0] = font_col.R; /* Red */
+        pixel[1] = font_col.G; /* Green */
+        pixel[2] = font_col.B; /* Blue */
+        pixel[3] = font_col.notused;
       } else {
-        pixel[0] = backgroung.R;
-        pixel[1] = backgroung.G;
-        pixel[2] = backgroung.B;
-        pixel[3] = backgroung.notused;
+        pixel[0] = background.R;
+        pixel[1] = background.G;
+        pixel[2] = background.B;
+        pixel[3] = background.notused;
       }
       pixel += 4;
       mask >>= 1;
@@ -108,7 +143,7 @@ void fbputchar(char c, int row, int col,struct color font,struct color backgroun
  * Draw the given string at the given row/column.
  * String must fit on a single line: wrap-around is not handled.
  */
-void fbputs(const char *s, int row, int col)
+void fbputs(const char *s, int row, int col, struct color bg)
 {
   char c;
   while ((c = *s++) != 0){
@@ -117,7 +152,7 @@ void fbputs(const char *s, int row, int col)
 	row++;
  }
  if (isprint(c))
-   fbputchar(c, row, col++,grey,greyBlack);
+   fbputchar(c, row, col++,greyBlack, bg);
  
 }
 }
@@ -131,7 +166,7 @@ void fbclearall()
  	}		
 }
 
-void scrolldown(int row_h, int row_t)
+void scrolldown(int row_h, int row_t, struct color background)
 {
   unsigned char *start = framebuffer +
     (row_h * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
@@ -148,9 +183,12 @@ void scrolldown(int row_h, int row_t)
     prev++;
     curr++;
   }
-  while (prev != curr) {
-  *prev = 0;
-  prev++;
+  while (prev <= curr) {
+  prev[0] = background.R;
+  prev[1] = background.G;
+  prev[2] = background.B;
+  prev[3] = background.notused;
+  prev += 4;
   }
 }
 
@@ -165,7 +203,7 @@ void fbclear(int row_h, int row_t,struct color background)
     end = start + fb_finfo.line_length * FONT_HEIGHT * 2;
     curr = start;
     while (curr != end) {
-      curr[0] = backgroung.R;
+      curr[0] = background.R;
       curr[1]=background.G;
       curr[2]=background.B;
       curr[3]=background.notused;
@@ -184,7 +222,7 @@ void invert(int row, int col)
   for (int i = 0; i < FONT_HEIGHT * 2; i++, start += fb_finfo.line_length) {
     pixel = start;
     for (int j = 0; j < FONT_WIDTH * 2; j++) {
-      if (pixel[0]=FONTGLOBAL.R){
+      if (pixel[0]==FONTGLOBAL->R){
       	pixel[0] = BACKGROUNDGLOBAL->R;
         pixel[1]=BACKGROUNDGLOBAL->G;
         pixel[2]=BACKGROUNDGLOBAL->B;
@@ -207,28 +245,77 @@ void invert(int row, int col)
 od --address-radix=n --width=16 -v -t x1 -j 4 -N 2048 lat0-16.psfu
 
 */
+
+void draw_pixel(int row, int col_h, int col_t, int p_line_h, int p_line_t, struct color bg)
+{
+  unsigned char *curr = framebuffer +
+    (row * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
+    (col_h * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
+  curr += p_line_h * fb_finfo.line_length;
+  unsigned char *line_end = curr + (col_t - col_h + 1) * FONT_WIDTH * 2 * BITS_PER_PIXEL / 8;
+  unsigned char *start = curr;
+  for (int i = p_line_h; i <= p_line_t; i++) {
+    curr = start;
+    while (curr < line_end) {
+      curr[0]=bg.R;
+      curr[1]=bg.G;
+      curr[2]=bg.B;
+      curr[3]=bg.notused;
+      curr+=4;
+    }
+    start += fb_finfo.line_length;
+    line_end += fb_finfo.line_length;
+  }
+}
+
 void drawLine(int row,int col_h,int col_t){
 unsigned char *start = framebuffer +
     (row * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
     (col_h * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
-unsigned char *end = start+FONT_HEIGHT/8*fb_finfo.line_length;
-unsigned char*curr=start;
+unsigned char *end = start+FONT_HEIGHT * 2 * fb_finfo.line_length;
+unsigned char* curr=start;
+while(curr<end){
+  curr[0]=darkBlue.R;
+  curr[1]=darkBlue.G;
+  curr[2]=darkBlue.B;
+  curr[3]=darkBlue.notused;
+  curr+=4;
+}
+  curr -= fb_finfo.line_length * 5;
 while(curr<end){
   curr[0]=lightBlue.R;
   curr[1]=lightBlue.G;
   curr[2]=lightBlue.B;
-  curr[3]=lightBlue.notused
-   curr+=4;
+  curr[3]=lightBlue.notused;
+  curr+=4;
+}
+  curr -= fb_finfo.line_length * 2;
+while(curr<end){
+  curr[0]=darkgrey.R;
+  curr[1]=darkgrey.G;
+  curr[2]=darkgrey.B;
+  curr[3]=darkgrey.notused;
+  curr+=4;
 }
 
 
 }
 void initScreen(){
-fbclear(0, ROW_MAX,greyBlack)
-fbputs("received:",0,0);
-fbputs("sent:",11,0);
-drawLine(11,0,63);
-drawLine(21,0,63);
+fbclear(0, ROW_MAX,grey);
+draw_pixel(0, 0 ,63, 0, 25, darkBlue);
+draw_pixel(11, 0 ,63, 0, 25, darkBlue);
+draw_pixel(21, 0 ,63, 0, 25, darkBlue);
+
+
+
+fbputs("received:",0,0, darkBlue);
+fbputs("sent:",11,0, darkBlue);
+draw_pixel(0, 0 ,63, 26, 29, lightBlue);
+draw_pixel(0, 0 ,63, 30, 31, darkgrey);
+draw_pixel(11, 0 ,63, 26, 29, lightBlue);
+draw_pixel(11, 0 ,63, 30, 31, darkgrey);
+draw_pixel(21, 0 ,63, 26, 29, lightBlue);
+draw_pixel(21, 0 ,63, 30, 31, darkgrey);
 invert(22, 0);
 }
 static unsigned char font[] = {
