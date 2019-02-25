@@ -171,7 +171,7 @@ void scrolldown(int row_h, int row_t, struct color background)
   unsigned char *start = framebuffer +
     (row_h * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
     (0 * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
-  unsigned char *end = ramebuffer +
+  unsigned char *end = framebuffer +
     ((row_t + 1) * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
     (0 * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
   unsigned char *curr, *prev;
