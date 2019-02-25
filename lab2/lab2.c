@@ -19,13 +19,9 @@
  */
 /* micro36.ee.columbia.edu */
 #define SERVER_HOST "128.59.148.182"
-//#define SERVER_HOST "128.59.64.154"
 #define SERVER_PORT 42000
 
 #define BUFFER_SIZE 128
-
-//struct color *FONTGLOBAL=&greyBlack;
-//struct color *BACKGROUNDGLOBAL=&grey;
 
 
 typedef struct {
@@ -35,7 +31,7 @@ typedef struct {
   int sen_limit;
 } screen_info;
 
-screen_info info = {
+static screen_info info = {
   .rev_row = 1,
   .rev_limit = 10,
   .sen_row = 12,
@@ -43,9 +39,11 @@ screen_info info = {
 };
 
 
+/* count for recording position of input string */
+static int count = 0;
+/* cursor_count for recording position of cursor */
+static int cursor_count = 0;
 
-int count = 0;
-int cursor_count = 0;
 /*
  * References:
  *
@@ -95,7 +93,7 @@ int main()
 
   struct usb_keyboard_packet packet;
   int transferred;
-  char keystate[12];
+  // char keystate[12];
 
   if ((err = fbopen()) != 0) {
     fprintf(stderr, "Error: Could not open framebuffer: %d\n", err);
@@ -138,11 +136,13 @@ int main()
 
   for (;;) {
     int exit = 0;
+    char buffer[BUFFER_SIZE];
+    char prev = 0x00;
+
     count = 0;
     cursor_count = 0;
-    char buffer[BUFFER_SIZE];
     buffer[0] = '\0';
-    char prev = 0x00;
+
     for (;;) {
       libusb_interrupt_transfer(keyboard, endpoint_address,
             (unsigned char *) &packet, sizeof(packet),
@@ -152,24 +152,24 @@ int main()
         if (packet.keycode[0] < 0x04) {
           prev = 0x00;
           continue;
-	} else if (packet.keycode[0] == 0x2b) {
+	       } else if (packet.keycode[0] == 0x2b) { /* replace TAB for 2 spaces */
           if (count >= BUFFER_SIZE - 1)
-	    continue;
-	  add_word(buffer, ' ');
-	  add_word(buffer, ' ');  
-        } else if (packet.keycode[0] >= 0x4f && packet.keycode[0] <= 0x52) {
-	  interpret_arrow(buffer, packet.keycode[0]); 
-        } else if (packet.keycode[0] == 0x2a) { // Delete
+	          continue;
+	        add_word(buffer, ' ');
+	        add_word(buffer, ' ');  
+        } else if (packet.keycode[0] >= 0x4f && packet.keycode[0] <= 0x52) { /* move cursor */
+	        interpret_arrow(buffer, packet.keycode[0]); 
+        } else if (packet.keycode[0] == 0x2a) { /* DELETE handler */
           if (count == 0)
             continue;
           else
             delete_word(buffer);
-        } else if (packet.keycode[0] == 0x28) { // Enter
+        } else if (packet.keycode[0] == 0x28) { /* ENTER handler */
           break;
-        } else if (packet.keycode[0] == 0x29) { // Esc
+        } else if (packet.keycode[0] == 0x29) { /* ESC handler */
           exit = 1;
           break;
-        } else if (packet.keycode[1] == 0x00) {
+        } else if (packet.keycode[1] == 0x00) { /* single keyboard pressed */
           if (count >=  BUFFER_SIZE - 1 || packet.keycode[0] == prev)
             continue;
           char tmp = interpret_key(packet, 0);
@@ -177,7 +177,7 @@ int main()
 	          continue;
           add_word(buffer, tmp);
 	        prev = packet.keycode[0];
-        } else {
+        } else { /* double keyboard pressed and avoid strange situation */
 	        if (count >=  BUFFER_SIZE - 1)
             continue;
           int index = 0;
@@ -194,12 +194,14 @@ int main()
     if (exit)
       break;
     fbclear(22, 23, *BACKGROUNDGLOBAL);
+    if (count == 0)
+      continue;
     int n = write(sockfd, &buffer, count - 1);
     if (n <= 0)
       printf("Sending packet failed\n");
 
 
-    while (info.sen_limit - info.sen_row < count/64 + 1) {
+    while (info.sen_limit - info.sen_row < count/64 + 1) {  /* sent region scroll down */
       scrolldown(info.rev_limit + 2, info.sen_limit, *BACKGROUNDGLOBAL);
       info.sen_row--;
     }
@@ -229,8 +231,10 @@ void *network_thread_f(void *ignored)
   /* Receive data */
   while ( (n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0 ) {
     recvBuf[n] = '\0';
-    printf("len: %d, %s\n", n, recvBuf);
-    while (info.rev_limit - info.rev_row < count/64 + 1) {
+
+    // printf("len: %d, %s\n", n, recvBuf);
+
+    while (info.rev_limit - info.rev_row < count/64 + 1) { /* receive region scroll down */
       scrolldown(1, info.rev_limit, *BACKGROUNDGLOBAL);
       info.rev_row--;
     }
@@ -239,9 +243,7 @@ void *network_thread_f(void *ignored)
       info.rev_row++;
     else
       info.rev_row += 2;
-
   }
-
   return NULL;
 }
 
@@ -266,11 +268,12 @@ char interpret_key(struct usb_keyboard_packet packet, int index)
   return 0x00;
 }
 
-
+/* delete word indicated by cursor_count and refresh framebuffer */
 void delete_word(char* buffer)
 {
   char *curr = &buffer[cursor_count - 1];
   char *end = &buffer[count];
+
   while (curr != end) {
     *curr = *(curr + 1);
     curr++;
@@ -283,6 +286,7 @@ void delete_word(char* buffer)
 
 }
 
+/* add word indicated by cursor_count and refresh framebuffer */
 void add_word(char* buffer, char word) 
 {
 
@@ -302,11 +306,13 @@ void add_word(char* buffer, char word)
 
 }
 
+/* cursor moving handler */
 void interpret_arrow(char* buffer, unsigned char key)
 {
   switch (key)
   {
     case 0x4f:
+      /* cursor moving right */
       if (cursor_count == count)
         break;
       else {
@@ -316,6 +322,7 @@ void interpret_arrow(char* buffer, unsigned char key)
       }        
       break;
     case 0x50:
+      /* cursor moving left */
       if (cursor_count == 0)
         break;
       else {
@@ -325,8 +332,10 @@ void interpret_arrow(char* buffer, unsigned char key)
       }
       break;
     case 0x51:
+      /* Down case not handled */
       break;
     case 0x52:
+      /* Up case not handled */
       break;
     default:
       break;

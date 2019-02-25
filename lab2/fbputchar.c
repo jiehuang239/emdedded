@@ -32,7 +32,6 @@ struct color darkBlue={
 	.G=116,
 	.B=26,
 	.notused=0
- 
 };
 struct color lightBlue={
 	.R=231,
@@ -59,8 +58,8 @@ struct color greyBlack={
 	.notused=0
 };
 
-struct color *FONTGLOBAL=&greyBlack;
-struct color *BACKGROUNDGLOBAL=&grey;
+struct color *FONTGLOBAL = &greyBlack;
+struct color *BACKGROUNDGLOBAL = &grey;
 
 
 struct fb_var_screeninfo fb_vinfo;
@@ -141,22 +140,22 @@ void fbputchar(char c, int row, int col,struct color font_col,struct color backg
 
 /*
  * Draw the given string at the given row/column.
- * String must fit on a single line: wrap-around is not handled.
+ * wrap-around is handled
  */
 void fbputs(const char *s, int row, int col, struct color bg)
 {
   char c;
   while ((c = *s++) != 0){
- if(col == 64) {
-	col = 0;
-	row++;
- }
- if (isprint(c))
-   fbputchar(c, row, col++,greyBlack, bg);
- 
-}
+    if(col == 64) {
+	    col = 0;
+	    row++;
+    }
+    if (isprint(c))
+      fbputchar(c, row, col++, *FONTGLOBAL, bg);
+  }
 }
 
+/* set framebuffer all to 0 */
 void fbclearall()
 {		
 	unsigned char *pixel = framebuffer;		
@@ -166,53 +165,57 @@ void fbclearall()
  	}		
 }
 
+/* scroll down the given region with specific background color */
 void scrolldown(int row_h, int row_t, struct color background)
 {
   unsigned char *start = framebuffer +
     (row_h * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
     (0 * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
-  unsigned char *curr, *prev, *end;
-  end = framebuffer +
+  unsigned char *end = ramebuffer +
     ((row_t + 1) * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
     (0 * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
+  unsigned char *curr, *prev;
+
   prev = start;
   curr = prev + FONT_HEIGHT * 2 * fb_finfo.line_length;
 
-  while (curr < end && curr != end) {
+  while (curr < end) {
     *prev = *curr;
     prev++;
     curr++;
   }
-  while (prev <= curr) {
-  prev[0] = background.R;
-  prev[1] = background.G;
-  prev[2] = background.B;
-  prev[3] = background.notused;
-  prev += 4;
+  while (prev < curr) {
+    prev[0] = background.R;
+    prev[1] = background.G;
+    prev[2] = background.B;
+    prev[3] = background.notused;
+    prev += 4;
   }
 }
 
-
+/* clear a given region with background color */
 void fbclear(int row_h, int row_t,struct color background)
 {
   unsigned char *start = framebuffer +
     (row_h * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
     (0 * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
   unsigned char *curr, *end;
+
   for (int i = row_h; i <= row_t; i++) {
     end = start + fb_finfo.line_length * FONT_HEIGHT * 2;
     curr = start;
     while (curr != end) {
       curr[0] = background.R;
-      curr[1]=background.G;
-      curr[2]=background.B;
-      curr[3]=background.notused;
-      curr+=4;
+      curr[1] = background.G;
+      curr[2] = background.B;
+      curr[3] = background.notused;
+      curr += 4;
     }
     start = end;
   }
 }
 
+/* invert the color of a given font space */
 void invert(int row, int col)
 {
   unsigned char *start = framebuffer +
@@ -222,30 +225,24 @@ void invert(int row, int col)
   for (int i = 0; i < FONT_HEIGHT * 2; i++, start += fb_finfo.line_length) {
     pixel = start;
     for (int j = 0; j < FONT_WIDTH * 2; j++) {
-      if (pixel[0]==FONTGLOBAL->R){
+      if (pixel[0] == FONTGLOBAL->R && pixel[1] == FONTGLOBAL->G && pixel[2] == FONTGLOBAL->G){
       	pixel[0] = BACKGROUNDGLOBAL->R;
-        pixel[1]=BACKGROUNDGLOBAL->G;
-        pixel[2]=BACKGROUNDGLOBAL->B;
-        pixel[3]=BACKGROUNDGLOBAL->notused;
-	  }
-        
-      else{
+        pixel[1] = BACKGROUNDGLOBAL->G;
+        pixel[2] = BACKGROUNDGLOBAL->B;
+        pixel[3] = BACKGROUNDGLOBAL->notused;
+      } else {
       	pixel[0] =FONTGLOBAL->R;
         pixel[1]=FONTGLOBAL->G;
         pixel[2]=FONTGLOBAL->B;
         pixel[3]=FONTGLOBAL->notused;
-	  }
+	    }
 	
       pixel+=4;
     }
   }
 }
-/* 8 X 16 console font from /lib/kbd/consolefonts/lat0-16.psfu.gz
 
-od --address-radix=n --width=16 -v -t x1 -j 4 -N 2048 lat0-16.psfu
-
-*/
-
+/* draw a line in specific pixel lines with bg color */
 void draw_pixel(int row, int col_h, int col_t, int p_line_h, int p_line_t, struct color bg)
 {
   unsigned char *curr = framebuffer +
@@ -254,70 +251,82 @@ void draw_pixel(int row, int col_h, int col_t, int p_line_h, int p_line_t, struc
   curr += p_line_h * fb_finfo.line_length;
   unsigned char *line_end = curr + (col_t - col_h + 1) * FONT_WIDTH * 2 * BITS_PER_PIXEL / 8;
   unsigned char *start = curr;
+
   for (int i = p_line_h; i <= p_line_t; i++) {
     curr = start;
     while (curr < line_end) {
-      curr[0]=bg.R;
-      curr[1]=bg.G;
-      curr[2]=bg.B;
-      curr[3]=bg.notused;
-      curr+=4;
+      curr[0] = bg.R;
+      curr[1] = bg.G;
+      curr[2] = bg.B;
+      curr[3] = bg.notused;
+      curr += 4;
     }
     start += fb_finfo.line_length;
     line_end += fb_finfo.line_length;
   }
 }
 
+
+/* draw a line in a given row (Not used anymore)*/
 void drawLine(int row,int col_h,int col_t){
-unsigned char *start = framebuffer +
+  unsigned char *start = framebuffer +
     (row * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
     (col_h * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
-unsigned char *end = start+FONT_HEIGHT * 2 * fb_finfo.line_length;
-unsigned char* curr=start;
-while(curr<end){
-  curr[0]=darkBlue.R;
-  curr[1]=darkBlue.G;
-  curr[2]=darkBlue.B;
-  curr[3]=darkBlue.notused;
-  curr+=4;
-}
+  unsigned char *end = start+FONT_HEIGHT * 2 * fb_finfo.line_length;
+  unsigned char* curr=start;
+  while(curr<end){
+    curr[0]=darkBlue.R;
+    curr[1]=darkBlue.G;
+    curr[2]=darkBlue.B;
+    curr[3]=darkBlue.notused;
+    curr+=4;
+  }
   curr -= fb_finfo.line_length * 5;
-while(curr<end){
-  curr[0]=lightBlue.R;
-  curr[1]=lightBlue.G;
-  curr[2]=lightBlue.B;
-  curr[3]=lightBlue.notused;
-  curr+=4;
-}
+  while(curr<end){
+    curr[0]=lightBlue.R;
+    curr[1]=lightBlue.G;
+    curr[2]=lightBlue.B;
+    curr[3]=lightBlue.notused;
+    curr+=4;
+  }
   curr -= fb_finfo.line_length * 2;
-while(curr<end){
-  curr[0]=darkgrey.R;
-  curr[1]=darkgrey.G;
-  curr[2]=darkgrey.B;
-  curr[3]=darkgrey.notused;
-  curr+=4;
+  while(curr<end){
+    curr[0]=darkgrey.R;
+    curr[1]=darkgrey.G;
+    curr[2]=darkgrey.B;
+    curr[3]=darkgrey.notused;
+    curr+=4;
+  }
 }
 
-
-}
+/* draw the screen of the client */
 void initScreen(){
-fbclear(0, ROW_MAX,grey);
-draw_pixel(0, 0 ,63, 0, 25, darkBlue);
-draw_pixel(11, 0 ,63, 0, 25, darkBlue);
-draw_pixel(21, 0 ,63, 0, 25, darkBlue);
+  fbclear(0, ROW_MAX, *BACKGROUNDGLOBAL);
 
+  draw_pixel(0, 0, 63, 0, 25, darkBlue);
+  draw_pixel(11, 0, 63, 0, 25, darkBlue);
+  draw_pixel(21, 0, 63, 0, 25, darkBlue);
 
+  fbputs("received:", 0, 0, darkBlue);
+  fbputs("sent:", 11, 0, darkBlue);
 
-fbputs("received:",0,0, darkBlue);
-fbputs("sent:",11,0, darkBlue);
-draw_pixel(0, 0 ,63, 26, 29, lightBlue);
-draw_pixel(0, 0 ,63, 30, 31, darkgrey);
-draw_pixel(11, 0 ,63, 26, 29, lightBlue);
-draw_pixel(11, 0 ,63, 30, 31, darkgrey);
-draw_pixel(21, 0 ,63, 26, 29, lightBlue);
-draw_pixel(21, 0 ,63, 30, 31, darkgrey);
-invert(22, 0);
+  draw_pixel(0, 0 ,63, 26, 29, lightBlue);
+  draw_pixel(0, 0 ,63, 30, 31, darkgrey);
+
+  draw_pixel(11, 0 ,63, 26, 29, lightBlue);
+  draw_pixel(11, 0 ,63, 30, 31, darkgrey);
+
+  draw_pixel(21, 0 ,63, 26, 29, lightBlue);
+  draw_pixel(21, 0 ,63, 30, 31, darkgrey);
+  
+  invert(22, 0);
 }
+
+/* 8 X 16 console font from /lib/kbd/consolefonts/lat0-16.psfu.gz
+
+od --address-radix=n --width=16 -v -t x1 -j 4 -N 2048 lat0-16.psfu
+
+*/
 static unsigned char font[] = {
   0x00, 0x00, 0x7e, 0xc3, 0x99, 0x99, 0xf3, 0xe7, 0xe7, 0xff, 0xe7, 0xe7, 0x7e, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x76, 0xdc, 0x00, 0x76, 0xdc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
