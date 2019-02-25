@@ -225,7 +225,7 @@ void invert(int row, int col)
   for (int i = 0; i < FONT_HEIGHT * 2; i++, start += fb_finfo.line_length) {
     pixel = start;
     for (int j = 0; j < FONT_WIDTH * 2; j++) {
-      if (pixel[0] == FONTGLOBAL->R && pixel[1] == FONTGLOBAL->G && pixel[2] == FONTGLOBAL->G){
+      if (pixel[0] == FONTGLOBAL->R && pixel[1] == FONTGLOBAL->G && pixel[2] == FONTGLOBAL->B) {
       	pixel[0] = BACKGROUNDGLOBAL->R;
         pixel[1] = BACKGROUNDGLOBAL->G;
         pixel[2] = BACKGROUNDGLOBAL->B;
@@ -307,8 +307,8 @@ void initScreen(){
   draw_pixel(SEN_LINE, 0, 63, 0, 25, darkBlue);
   draw_pixel(INPUT_LINE, 0, 63, 0, 25, darkBlue);
 
-  fbputs("received:", 0, 0, darkBlue);
-  fbputs("sent:", 11, 0, darkBlue);
+  fbputs("received:", REC_LINE, 0, darkBlue);
+  fbputs("sent:", SEN_LINE, 0, darkBlue);
 
   draw_pixel(REC_LINE, 0 ,63, 26, 29, lightBlue);
   draw_pixel(REC_LINE, 0 ,63, 30, 31, darkgrey);

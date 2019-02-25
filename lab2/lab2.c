@@ -206,10 +206,7 @@ int main()
       info.sen_row--;
     }
     fbputs(buffer, info.sen_row, 0, *BACKGROUNDGLOBAL);
-    if (count < 65)
-      info.sen_row++;
-    else
-      info.sen_row += 2;
+    info.sen_row += (n/65 + 1);
 
   }
 
@@ -239,10 +236,7 @@ void *network_thread_f(void *ignored)
       info.rev_row--;
     }
     fbputs(recvBuf, info.rev_row, 0, *BACKGROUNDGLOBAL);
-    if (n < 65)
-      info.rev_row++;
-    else
-      info.rev_row += 2;
+    info.rev_row += (n/65 + 1);
   }
   return NULL;
 }

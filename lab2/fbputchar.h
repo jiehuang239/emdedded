@@ -8,7 +8,7 @@
 #define FBOPEN_BPP -5          /* Unexpected bits-per-pixel */
 
 #define REC_LINE 0
-#define SEN_LINE 11
+#define SEN_LINE 15
 #define INPUT_LINE 21
 
 struct color{
