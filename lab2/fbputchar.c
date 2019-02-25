@@ -303,23 +303,23 @@ void drawLine(int row,int col_h,int col_t){
 void initScreen(){
   fbclear(0, ROW_MAX, *BACKGROUNDGLOBAL);
 
-  draw_pixel(0, 0, 63, 0, 25, darkBlue);
-  draw_pixel(11, 0, 63, 0, 25, darkBlue);
-  draw_pixel(21, 0, 63, 0, 25, darkBlue);
+  draw_pixel(REC_LINE, 0, 63, 0, 25, darkBlue);
+  draw_pixel(SEN_LINE, 0, 63, 0, 25, darkBlue);
+  draw_pixel(INPUT_LINE, 0, 63, 0, 25, darkBlue);
 
   fbputs("received:", 0, 0, darkBlue);
   fbputs("sent:", 11, 0, darkBlue);
 
-  draw_pixel(0, 0 ,63, 26, 29, lightBlue);
-  draw_pixel(0, 0 ,63, 30, 31, darkgrey);
+  draw_pixel(REC_LINE, 0 ,63, 26, 29, lightBlue);
+  draw_pixel(REC_LINE, 0 ,63, 30, 31, darkgrey);
 
-  draw_pixel(11, 0 ,63, 26, 29, lightBlue);
-  draw_pixel(11, 0 ,63, 30, 31, darkgrey);
+  draw_pixel(SEN_LINE, 0 ,63, 26, 29, lightBlue);
+  draw_pixel(SEN_LINE, 0 ,63, 30, 31, darkgrey);
 
-  draw_pixel(21, 0 ,63, 26, 29, lightBlue);
-  draw_pixel(21, 0 ,63, 30, 31, darkgrey);
-  
-  invert(22, 0);
+  draw_pixel(INPUT_LINE, 0 ,63, 26, 29, lightBlue);
+  draw_pixel(INPUT_LINE, 0 ,63, 30, 31, darkgrey);
+
+  invert(INPUT_LINE + 1, 0);
 }
 
 /* 8 X 16 console font from /lib/kbd/consolefonts/lat0-16.psfu.gz

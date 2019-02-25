@@ -32,10 +32,10 @@ typedef struct {
 } screen_info;
 
 static screen_info info = {
-  .rev_row = 1,
-  .rev_limit = 10,
-  .sen_row = 12,
-  .sen_limit = 20
+  .rev_row = REC_LINE + 1,
+  .rev_limit = SEN_LINE - 1,
+  .sen_row = SEN_LINE + 1,
+  .sen_limit = INPUT_LINE - 1
 };
 
 
@@ -193,7 +193,7 @@ int main()
     }
     if (exit)
       break;
-    fbclear(22, 23, *BACKGROUNDGLOBAL);
+    fbclear(INPUT_LINE + 1, INPUT_LINE + 2, *BACKGROUNDGLOBAL);
     if (count == 0)
       continue;
     int n = write(sockfd, &buffer, count - 1);
@@ -235,7 +235,7 @@ void *network_thread_f(void *ignored)
     // printf("len: %d, %s\n", n, recvBuf);
 
     while (info.rev_limit - info.rev_row < count/64 + 1) { /* receive region scroll down */
-      scrolldown(1, info.rev_limit, *BACKGROUNDGLOBAL);
+      scrolldown(REC_LINE + 1, info.rev_limit, *BACKGROUNDGLOBAL);
       info.rev_row--;
     }
     fbputs(recvBuf, info.rev_row, 0, *BACKGROUNDGLOBAL);
@@ -278,11 +278,11 @@ void delete_word(char* buffer)
     *curr = *(curr + 1);
     curr++;
   }
-  fbclear(22, 23, *BACKGROUNDGLOBAL);
-  fbputs(buffer, 22, 0, *BACKGROUNDGLOBAL);
+  fbclear(INPUT_LINE + 1, INPUT_LINE + 2, *BACKGROUNDGLOBAL);
+  fbputs(buffer, INPUT_LINE + 1, 0, *BACKGROUNDGLOBAL);
   count--;
   cursor_count--;
-  invert(22 + cursor_count/64, cursor_count%64);
+  invert(INPUT_LINE + 1 + cursor_count/64, cursor_count%64);
 
 }
 
@@ -298,11 +298,11 @@ void add_word(char* buffer, char word)
     end--;
   }
   *curr = word;
-  fbclear(22, 23, *BACKGROUNDGLOBAL);
-  fbputs(buffer, 22, 0, *BACKGROUNDGLOBAL);
+  fbclear(INPUT_LINE + 1, INPUT_LINE + 2, *BACKGROUNDGLOBAL);
+  fbputs(buffer, INPUT_LINE + 1, 0, *BACKGROUNDGLOBAL);
   count++;
   cursor_count++;
-  invert(22 + cursor_count/64, cursor_count%64);
+  invert(INPUT_LINE + 1 + cursor_count/64, cursor_count%64);
 
 }
 
@@ -316,9 +316,9 @@ void interpret_arrow(char* buffer, unsigned char key)
       if (cursor_count == count)
         break;
       else {
-        invert(22 + cursor_count/64, cursor_count%64);
+        invert(INPUT_LINE + 1 + cursor_count/64, cursor_count%64);
         cursor_count++;
-        invert(22 + cursor_count/64, cursor_count%64); 
+        invert(INPUT_LINE + 1 + cursor_count/64, cursor_count%64); 
       }        
       break;
     case 0x50:
@@ -326,9 +326,9 @@ void interpret_arrow(char* buffer, unsigned char key)
       if (cursor_count == 0)
         break;
       else {
-        invert(22 + cursor_count/64, cursor_count%64);
+        invert(INPUT_LINE + 1 + cursor_count/64, cursor_count%64);
         cursor_count--;
-        invert(22 + cursor_count/64, cursor_count%64); 
+        invert(INPUT_LINE + 1 + cursor_count/64, cursor_count%64); 
       }
       break;
     case 0x51:

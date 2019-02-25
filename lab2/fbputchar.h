@@ -9,6 +9,7 @@
 
 #define REC_LINE 0
 #define SEN_LINE 11
+#define INPUT_LINE 21
 
 struct color{
   char R;
