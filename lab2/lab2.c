@@ -196,7 +196,7 @@ int main()
     fbclear(INPUT_LINE + 1, INPUT_LINE + 2, *BACKGROUNDGLOBAL);
     if (count == 0)
       continue;
-    int n = write(sockfd, &buffer, count - 1);
+    int n = write(sockfd, &buffer, count);
     if (n <= 0)
       printf("Sending packet failed\n");
 
